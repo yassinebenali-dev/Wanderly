@@ -1,15 +1,23 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { HeroSection } from '@/components/HeroSection';
 import { ChatInterface } from '@/components/ChatInterface';
 import { TravelDashboard } from '@/components/TravelDashboard';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, X, Plane, Globe, Users, Star, Compass, ArrowRight, Sparkles, Shield, Zap, LogOut } from 'lucide-react';
+import { MessageCircle, X, Plane, Globe, Users, Star, Compass, ArrowRight, Sparkles, Shield, Zap, LogOut, Bookmark, BookmarkCheck, User, ChevronDown, Loader2 } from 'lucide-react';
 import ctaBackground from '@/assets/cta-background.jpg';
 import { useRecommendations } from '@/hooks/useRecommendations';
 import { UserPreferences, INTEREST_OPTIONS } from '@/types/travel';
 import { useAuth } from '@/hooks/useAuth';
+import { useSaved } from '@/hooks/useSaved';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const Index = () => {
   const [showDashboard, setShowDashboard] = useState(false);
@@ -17,16 +25,37 @@ const Index = () => {
   const [preferences, setPreferences] = useState<UserPreferences>({ interests: [] });
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [savedRecommendations, setSavedRecommendations] = useState<any>(null);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  
+  const location = useLocation();
+
   const { recommendations, isLoading, fetchRecommendations, clearRecommendations } = useRecommendations();
+  const { isSaved, savedId, isLoading: saveLoading, checkIfSaved, saveDestination, unsaveDestination } = useSaved();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Handle loading from saved destination
+useEffect(() => {
+  if (location.state?.savedItem) {
+    const saved = location.state.savedItem;
+    setDestination(saved.destination);
+    setPreferences({ budget: saved.budget, interests: saved.interests || [] });
+    setSavedRecommendations(saved.recommendations);
+    setShowDashboard(true);
+  }
+}, [location.state]);
+
+  // Check if current destination is saved
+  useEffect(() => {
+    if (destination && user) {
+      checkIfSaved(destination);
+    }
+  }, [destination, user]);
 
   const handleSearch = async (dest: string, prefs: UserPreferences) => {
     setDestination(dest);
@@ -36,10 +65,22 @@ const Index = () => {
   };
 
   const handleBackToSearch = () => {
-    setShowDashboard(false);
-    setDestination('');
-    setPreferences({ interests: [] });
-    clearRecommendations();
+  setShowDashboard(false);
+  setDestination('');
+  setPreferences({ interests: [] });
+  clearRecommendations();
+  setSavedRecommendations(null);
+};
+  const handleSaveToggle = async () => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    if (isSaved && savedId) {
+      await unsaveDestination(savedId, destination);
+    } else if (recommendations) {
+      await saveDestination(destination, recommendations, preferences.budget, preferences.interests);
+    }
   };
 
   const getInterestLabels = () => {
@@ -54,8 +95,8 @@ const Index = () => {
       <div className="min-h-screen bg-background">
         {/* Scroll-aware Header */}
         <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          scrolled 
-            ? 'bg-background/90 backdrop-blur-xl border-b border-border shadow-sm' 
+          scrolled
+            ? 'bg-background/90 backdrop-blur-xl border-b border-border shadow-sm'
             : 'bg-transparent backdrop-blur-sm'
         }`}>
           <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -74,33 +115,41 @@ const Index = () => {
                 { label: 'About', href: '/about' },
               ].map((item) => (
                 <a key={item.label} href={item.href} className={`text-sm font-medium transition-colors duration-500 ${
-                  scrolled 
-                    ? 'text-muted-foreground hover:text-foreground' 
+                  scrolled
+                    ? 'text-muted-foreground hover:text-foreground'
                     : 'text-primary-foreground/70 hover:text-primary-foreground'
                 }`}>{item.label}</a>
               ))}
             </nav>
             {user ? (
-              <div className="flex items-center gap-3">
-                <span className={`text-sm transition-colors duration-500 ${
-                  scrolled ? 'text-muted-foreground' : 'text-primary-foreground/70'
-                }`}>{user.email}</span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className={`rounded-full text-xs transition-all duration-500 ${
-                    !scrolled && 'border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10'
-                  }`}
-                  onClick={() => signOut()}
-                >
-                  <LogOut className="h-3 w-3" />
-                  Sign Out
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className={`flex items-center gap-2 text-sm transition-colors duration-500 ${
+                    scrolled ? 'text-muted-foreground hover:text-foreground' : 'text-primary-foreground/70 hover:text-primary-foreground'
+                  }`}>
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      <User className="h-4 w-4" />
+                    </div>
+                    <span className="hidden md:block">{user.display_name || user.email}</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => navigate('/saved')}>
+                    <Bookmark className="h-4 w-4 mr-2" />
+                    Saved Destinations
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => signOut()} className="text-red-500">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className={`rounded-full text-xs transition-all duration-500 ${
                   !scrolled && 'border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10'
                 }`}
@@ -115,7 +164,7 @@ const Index = () => {
         <main>
           <HeroSection onSearch={handleSearch} />
 
-          {/* How It Works — modern editorial grid */}
+          {/* How It Works */}
           <section className="py-28">
             <div className="container mx-auto px-4">
               <div className="text-center mb-16">
@@ -151,7 +200,7 @@ const Index = () => {
             </div>
           </section>
 
-          {/* CTA — with background image */}
+          {/* CTA */}
           <section className="py-24">
             <div className="container mx-auto px-4">
               <div className="relative overflow-hidden rounded-3xl p-12 md:p-20 min-h-[400px] flex items-center">
@@ -186,24 +235,14 @@ const Index = () => {
           {isChatOpen ? (
             <div className="w-[380px] h-[550px] animate-slide-up">
               <div className="absolute -top-2 -right-2 z-10">
-                <Button
-                  variant="icon"
-                  size="icon"
-                  onClick={() => setIsChatOpen(false)}
-                  className="shadow-card"
-                >
+                <Button variant="icon" size="icon" onClick={() => setIsChatOpen(false)} className="shadow-card">
                   <X className="h-4 w-4" />
                 </Button>
               </div>
               <ChatInterface destination={destination} preferences={preferences} />
             </div>
           ) : (
-            <Button
-              variant="hero"
-              size="lg"
-              onClick={() => setIsChatOpen(true)}
-              className="rounded-full shadow-glow"
-            >
+            <Button variant="hero" size="lg" onClick={() => setIsChatOpen(true)} className="rounded-full shadow-glow">
               <MessageCircle className="h-5 w-5" />
               Chat with AI
             </Button>
@@ -238,9 +277,31 @@ const Index = () => {
               )}
             </div>
           </div>
-          <Button variant="outline" size="sm" className="rounded-full" onClick={handleBackToSearch}>
-            New Search
-          </Button>
+
+          <div className="flex items-center gap-2">
+            {/* Save button in header */}
+            {recommendations && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full"
+                onClick={handleSaveToggle}
+                disabled={saveLoading}
+              >
+                {saveLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : isSaved ? (
+                  <BookmarkCheck className="h-3.5 w-3.5 text-primary" />
+                ) : (
+                  <Bookmark className="h-3.5 w-3.5" />
+                )}
+                {isSaved ? 'Saved' : 'Save'}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" className="rounded-full" onClick={handleBackToSearch}>
+              New Search
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -250,12 +311,32 @@ const Index = () => {
             <ChatInterface destination={destination} preferences={preferences} />
           </div>
           <div className="lg:col-span-2 h-full overflow-auto relative">
+            {/* Floating save button */}
+            {recommendations && (
+              <div className="absolute top-4 right-4 z-10">
+                <Button
+                  size="sm"
+                  className="rounded-full shadow-lg"
+                  onClick={handleSaveToggle}
+                  disabled={saveLoading}
+                >
+                  {saveLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : isSaved ? (
+                    <BookmarkCheck className="h-3.5 w-3.5" />
+                  ) : (
+                    <Bookmark className="h-3.5 w-3.5" />
+                  )}
+                  {isSaved ? 'Saved!' : 'Save Trip'}
+                </Button>
+              </div>
+            )}
             <TravelDashboard
-              accommodations={recommendations?.accommodations}
-              restaurants={recommendations?.restaurants}
-              activities={recommendations?.activities}
-              landmarks={recommendations?.landmarks}
-              history={recommendations?.history}
+              accommodations={(savedRecommendations || recommendations)?.accommodations}
+              restaurants={(savedRecommendations || recommendations)?.restaurants}
+              activities={(savedRecommendations || recommendations)?.activities}
+              landmarks={(savedRecommendations || recommendations)?.landmarks}
+              history={(savedRecommendations || recommendations)?.history}
               isLoading={isLoading}
               destination={destination}
             />

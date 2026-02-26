@@ -22,7 +22,7 @@ export function Footer() {
           {[
             { title: 'Explore', items: ['Destinations', 'Experiences', 'Travel Guides', 'Hidden Gems'] },
             { title: 'Company', items: ['About', 'Careers', 'Blog', 'Press'] },
-            { title: 'Contact', items: ['hello@wanderly.ai', 'San Francisco, CA'] },
+            { title: 'Contact', items: ['hello@wanderly.tn', 'Ben Arous, Tunisia'] },
           ].map((col) => (
             <div key={col.title} className="md:col-span-2 space-y-4">
               <h4 className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground">{col.title}</h4>

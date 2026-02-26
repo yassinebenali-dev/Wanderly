@@ -9,6 +9,7 @@ import About from "./pages/About";
 import Experiences from "./pages/Experiences";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import SavedDestinations from "./pages/SavedDestinations";
 
 const queryClient = new QueryClient();
 
@@ -24,7 +25,7 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/experiences" element={<Experiences />} />
             <Route path="/auth" element={<Auth />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/saved" element={<SavedDestinations />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
