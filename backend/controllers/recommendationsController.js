@@ -156,20 +156,21 @@ Respond ONLY with valid JSON, no markdown:
 
 async function fetchHistoryAI(destination, interests) {
   const prompt = `You are a travel historian. Provide historical and cultural information about ${destination}.
-${interests?.length ? `The user is interested in: ${interests.join(', ')}.` : ''}
+
 Respond ONLY with valid JSON, no markdown, no code blocks:
 {
   "title": "The Story of ${destination}",
-  "content": "2-3 paragraphs about the city history and culture.",
+  "content": "Write 2-3 paragraphs giving a global historical and cultural overview of ${destination} — its origins, major historical events, and what makes it unique today. At the end, add one sentence mentioning how the city relates to: ${interests?.length ? interests.join(', ') : 'general tourism'}.",
   "traditions": [
     { "name": "Tradition Name", "description": "Brief description" }
   ]
 }
-Include exactly 3 traditions.`;
+Include exactly 3 traditions that are general cultural traditions of ${destination}, not limited to the user's interests.`;
 
   const response = await groq.chat.completions.create({
     model: 'llama-3.1-8b-instant',
     messages: [{ role: 'user', content: prompt }],
+    max_tokens: 1000,
   });
 
   const content = response.choices[0].message.content.trim()

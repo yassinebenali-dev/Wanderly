@@ -31,15 +31,24 @@ export function useSaved() {
     }
   }, []);
 
-  const saveDestination = useCallback(async (
+const saveDestination = useCallback(async (
     destination: string,
     recommendations: any,
     budget?: number,
     interests?: string[]
   ) => {
     const token = getToken();
+    console.log('Token:', token); // temporary debug
     if (!token) {
-      toast({ title: 'Sign in required', description: 'Please sign in to save destinations', variant: 'destructive' });
+      // Save pending data to localStorage before redirecting
+      localStorage.setItem('wanderly_pending_save', JSON.stringify({
+        destination,
+        recommendations,
+        budget,
+        interests,
+      }));
+      toast({ title: 'Sign in required', description: 'Please sign in to save your trip' });
+      window.location.href = '/auth';
       return;
     }
 

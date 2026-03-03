@@ -57,6 +57,28 @@ useEffect(() => {
     }
   }, [destination, user]);
 
+
+useEffect(() => {
+  const redirectDest = localStorage.getItem('wanderly_redirect_destination');
+  if (redirectDest) {
+    const pending = localStorage.getItem('wanderly_pending_save');
+    if (pending) {
+      try {
+        const { destination, recommendations, budget, interests } = JSON.parse(pending);
+        setDestination(destination);
+        setPreferences({ budget, interests: interests || [] });
+        setSavedRecommendations(recommendations);
+        setShowDashboard(true);
+        localStorage.removeItem('wanderly_pending_save');
+        localStorage.removeItem('wanderly_redirect_destination');
+      } catch (e) {
+        localStorage.removeItem('wanderly_pending_save');
+        localStorage.removeItem('wanderly_redirect_destination');
+      }
+    }
+  }
+}, []);
+
   const handleSearch = async (dest: string, prefs: UserPreferences) => {
     setDestination(dest);
     setPreferences(prefs);
@@ -72,10 +94,6 @@ useEffect(() => {
   setSavedRecommendations(null);
 };
   const handleSaveToggle = async () => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
     if (isSaved && savedId) {
       await unsaveDestination(savedId, destination);
     } else if (recommendations) {

@@ -55,6 +55,7 @@ const Auth = () => {
         } else {
           toast.success('Account created successfully!');
           navigate('/auth');
+          setIsLogin(true);
         }
       }
     } finally {

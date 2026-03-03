@@ -34,9 +34,7 @@ exports.register = async (req, res) => {
     const user = { id: result.insertId, email };
     const token = generateToken(user);
 
-    // Create empty profile for user
-    await pool.query('INSERT INTO profiles (user_id) VALUES (?)', [result.insertId]);
-
+  
     res.status(201).json({ token, user: { id: result.insertId, email, display_name } });
   } catch (err) {
     console.error('Register error:', err);

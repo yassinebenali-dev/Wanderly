@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { apiRequest, getToken, setToken, removeToken } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
   id: number;
@@ -20,6 +21,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const token = getToken();
@@ -55,6 +57,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       setToken(data.token);
       setUser(data.user);
+
+      // Check for pending save after login
+      const pending = localStorage.getItem('wanderly_pending_save');
+      if (pending) {
+        try {
+          const { destination, recommendations, budget, interests } = JSON.parse(pending);
+          await apiRequest('/saved', {
+            method: 'POST',
+            body: JSON.stringify({ destination, budget, interests, recommendations }),
+          });
+          localStorage.removeItem('wanderly_pending_save');
+          toast({
+            title: 'Trip saved!',
+            description: `${destination} has been saved to your destinations`,
+          });
+          // Store destination for redirect after auth state loads
+          localStorage.setItem('wanderly_redirect_destination', destination);
+        } catch {
+          localStorage.removeItem('wanderly_pending_save');
+        }
+      }
+
       return { error: null };
     } catch (err: any) {
       return { error: { message: err.message } };
