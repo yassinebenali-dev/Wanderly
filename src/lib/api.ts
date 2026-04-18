@@ -27,17 +27,26 @@ export async function apiRequest(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Request failed');
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(error.error || 'Request failed');
+    }
+
+    return response.json();
+  } catch (err: any) {
+    // Gestion de l'erreur de connexion au serveur
+    if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+      throw new Error('Erreur serveur, veuillez réessayer plus tard');
+    }
+    throw err;
   }
-
-  return response.json();
-}
+};
 
 export const API_URL = BASE_URL;
+

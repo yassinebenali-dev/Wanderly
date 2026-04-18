@@ -9,6 +9,8 @@ import About from "./pages/About";
 import Experiences from "./pages/Experiences";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Admin from './pages/Admin';
+import SearchHistory from './pages/SearchHistory';
 import SavedDestinations from "./pages/SavedDestinations";
 
 const queryClient = new QueryClient();
@@ -26,6 +28,8 @@ const App = () => (
             <Route path="/experiences" element={<Experiences />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/saved" element={<SavedDestinations />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/search-history" element={<SearchHistory />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

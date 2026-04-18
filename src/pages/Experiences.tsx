@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Footer } from '@/components/Footer';
-import { Plane, Compass, Star, MapPin, ArrowRight, Mountain, UtensilsCrossed, Landmark, Sparkles, Moon, Camera } from 'lucide-react';
+import { Plane, Compass, Star, MapPin, ArrowRight, Mountain, UtensilsCrossed, Landmark, Sparkles, Moon, Camera, User, ChevronDown, LogOut, Bookmark, LayoutDashboard } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 import experiencesHero from '@/assets/experiences-hero.jpg';
 import expAdventure from '@/assets/exp-adventure.jpg';
@@ -65,6 +73,8 @@ const featuredTestimonials = [
 
 const Experiences = () => {
   const [scrolled, setScrolled] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -102,15 +112,50 @@ const Experiences = () => {
               }`}>{item.label}</Link>
             ))}
           </nav>
-          <Button
-            variant="outline"
-            size="sm"
-            className={`rounded-full transition-all duration-500 ${
-              !scrolled && 'border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10'
-            }`}
-          >
-            Sign In
-          </Button>
+
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className={`flex items-center gap-2 text-sm transition-colors duration-500 ${
+                  scrolled ? 'text-muted-foreground hover:text-foreground' : 'text-primary-foreground/70 hover:text-primary-foreground'
+                }`}>
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <span className="hidden md:block">{user.display_name || user.email}</span>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate('/saved')}>
+                  <Bookmark className="h-4 w-4 mr-2" />
+                  Saved Destinations
+                </DropdownMenuItem>
+                {user.role === 'admin' && (
+                  <DropdownMenuItem onClick={() => navigate('/admin')}>
+                    <LayoutDashboard className="h-4 w-4 mr-2" />
+                    Admin Dashboard
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()} className="text-red-500">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className={`rounded-full transition-all duration-500 ${
+                !scrolled && 'border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10'
+              }`}
+              onClick={() => navigate('/auth')}
+            >
+              Sign In
+            </Button>
+          )}
         </div>
       </header>
 

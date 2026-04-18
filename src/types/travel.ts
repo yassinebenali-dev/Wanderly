@@ -9,6 +9,8 @@ export interface TravelPreferences {
 export interface UserPreferences {
   budget?: number;
   interests: string[];
+  arrivalDate?: string;
+  departureDate?: string;
 }
 
 export interface Place {

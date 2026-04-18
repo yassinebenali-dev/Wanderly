@@ -1,9 +1,81 @@
 const Groq = require('groq-sdk');
+const pool = require('../config/db');
 require('dotenv').config();
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const { normalizeDestination, correctDestinationName } = require('../utils/destinationUtils');
 
 const SERPAPI_BASE_URL = 'https://serpapi.com/search.json';
+
+const JSON_RULES = `
+CRITICAL FORMATTING RULES - YOU MUST FOLLOW THESE EXACTLY:
+1. Return ONLY raw JSON - no markdown, no backticks, no code blocks
+2. No newlines or line breaks inside string values - use spaces instead
+3. No apostrophes or single quotes inside strings - use spaces or rephrase
+4. No special characters inside strings that could break JSON
+5. Every string must be properly opened and closed with double quotes
+6. Every array and object must be properly opened and closed
+7. Do NOT truncate or cut off the response - complete the entire JSON
+8. Do NOT add any text before or after the JSON
+9. All property names must be in double quotes
+10. Use only simple ASCII characters in all string values
+`;
+
+const cleanJson = (str) => {
+  return str
+    .replace(/```json/g, '')
+    .replace(/```/g, '')
+    .replace(/[\x00-\x1F\x7F]/g, ' ')
+    .trim();
+};
+
+const safeParseJson = (content) => {
+  let parsed;
+  try {
+    parsed = JSON.parse(cleanJson(content));
+  } catch (e) {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        parsed = JSON.parse(cleanJson(jsonMatch[0]));
+      } catch (e2) {
+        console.error('Failed to parse AI response:', e2.message);
+        throw new Error('Invalid AI response format');
+      }
+    } else {
+      throw new Error('No JSON found in AI response');
+    }
+  }
+  return parsed;
+};
+
+const updateDestinationStats = async (destination) => {
+  try {
+    await pool.query(
+      `INSERT INTO destination_stats (destination, search_count)
+       VALUES (?, 1)
+       ON DUPLICATE KEY UPDATE
+       search_count = search_count + 1,
+       last_searched = CURRENT_TIMESTAMP`,
+      [destination]
+    );
+  } catch (err) {
+    console.error('Stats update error:', err);
+  }
+};
+
+const saveSearchHistory = async (userId, destination, budget, interests) => {
+  if (!userId) return;
+  try {
+    await pool.query(
+      `INSERT INTO search_history (user_id, destination, budget, interests)
+       VALUES (?, ?, ?, ?)`,
+      [userId, destination, budget || null, JSON.stringify(interests || [])]
+    );
+  } catch (err) {
+    console.error('Save search history error:', err);
+  }
+};
 
 const fallbackImages = {
   restaurant: [
@@ -25,7 +97,6 @@ const fallbackImages = {
     'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&q=90',
   ],
 };
-
 
 function getImage(thumbnail, type, index) {
   if (thumbnail) return thumbnail;
@@ -64,22 +135,6 @@ async function fetchFromSerpApi(query) {
   if (!response.ok) throw new Error(`SerpAPI error: ${response.status}`);
   const data = await response.json();
   return data.local_results || [];
-
-  async function fetchFromSerpApi(query) {
-    const url = new URL(SERPAPI_BASE_URL);
-    url.searchParams.set('engine', 'google_local');
-    url.searchParams.set('q', query);
-    url.searchParams.set('hl', 'en');
-    url.searchParams.set('gl', 'us');
-    url.searchParams.set('api_key', process.env.SERPAPI_KEY);
-
-    const response = await fetch(url.toString());
-    if (!response.ok) throw new Error(`SerpAPI error: ${response.status}`);
-    const data = await response.json();
-  
-    
-    return data.local_results || [];
-}
 }
 
 function transformPlace(place, type, index, destination) {
@@ -105,12 +160,15 @@ async function fetchAccommodationsAI(destination, budget) {
   let budgetContext = '';
   if (budget) {
     const perNight = Math.round((budget * 0.4) / 5);
-    budgetContext = `The user's total budget is $${budget}. Suggest options around $${perNight}/night.`;
+    budgetContext = `The user total budget is $${budget}. Suggest options around $${perNight} per night.`;
   }
 
-  const prompt = `You are a travel accommodation expert. ${budgetContext}
-Provide 6 accommodation recommendations for ${destination}.
-Respond ONLY with valid JSON, no markdown:
+  const prompt = `${JSON_RULES}
+
+You are a travel accommodation expert. ${budgetContext}
+Provide exactly 6 accommodation recommendations for ${destination}.
+
+Return this exact JSON structure:
 {
   "accommodations": [
     {
@@ -120,9 +178,9 @@ Respond ONLY with valid JSON, no markdown:
       "reviewCount": 1250,
       "priceLevel": 3,
       "price": "$$$",
-      "description": "Brief description",
-      "address": "Full address",
-      "tags": ["Tag1", "Tag2"]
+      "description": "Brief description using only simple words and no special characters",
+      "address": "Full address in ${destination}",
+      "tags": ["Tag1", "Tag2", "Tag3"]
     }
   ]
 }`;
@@ -131,12 +189,12 @@ Respond ONLY with valid JSON, no markdown:
     model: 'llama-3.1-8b-instant',
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 3000,
+    temperature: 0.3,
   });
 
-  const content = response.choices[0].message.content.trim()
-    .replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
+  const content = response.choices[0].message.content.trim();
+  const parsed = safeParseJson(content);
 
-  const parsed = JSON.parse(content);
   return parsed.accommodations.map((acc, i) => ({
     id: `accommodation-${i}`,
     name: acc.name,
@@ -150,75 +208,81 @@ Respond ONLY with valid JSON, no markdown:
     description: acc.description,
     address: acc.address,
     link: `https://www.google.com/search?q=${encodeURIComponent(acc.name + ' ' + destination)}`,
-    tags: acc.tags,
+    tags: acc.tags || [],
   }));
 }
 
 async function fetchHistoryAI(destination, interests) {
-  const prompt = `You are a travel historian. Provide historical and cultural information about ${destination}.
+  const prompt = `${JSON_RULES}
 
-Respond ONLY with valid JSON, no markdown, no code blocks:
+You are a travel historian. Provide historical and cultural information about ${destination}.
+
+Return this exact JSON structure:
 {
   "title": "The Story of ${destination}",
-  "content": "Write 2-3 paragraphs giving a global historical and cultural overview of ${destination} — its origins, major historical events, and what makes it unique today. At the end, add one sentence mentioning how the city relates to: ${interests?.length ? interests.join(', ') : 'general tourism'}.",
+  "content": "Write 2 to 3 paragraphs giving a global historical overview of ${destination}. Use only simple ASCII characters. No apostrophes. No special characters.",
   "traditions": [
-    { "name": "Tradition Name", "description": "Brief description" }
+    { "name": "Tradition Name", "description": "Brief description using simple words" },
+    { "name": "Tradition Name", "description": "Brief description using simple words" },
+    { "name": "Tradition Name", "description": "Brief description using simple words" }
   ]
 }
-Include exactly 3 traditions that are general cultural traditions of ${destination}, not limited to the user's interests.`;
+
+Include exactly 3 traditions. The content must mention how the city relates to: ${interests?.length ? interests.join(', ') : 'general tourism'}.`;
 
   const response = await groq.chat.completions.create({
     model: 'llama-3.1-8b-instant',
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 1000,
+    temperature: 0.3,
   });
 
-  const content = response.choices[0].message.content.trim()
-    .replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-
-  return JSON.parse(content);
+  const content = response.choices[0].message.content.trim();
+  return safeParseJson(content);
 }
 
 async function fetchAllAI(destination, budget, interests) {
-  const prompt = `You are a travel data API. Generate realistic travel recommendations for ${destination}.
+  const prompt = `${JSON_RULES}
+
+You are a travel data API. Generate realistic travel recommendations for ${destination}.
 ${budget ? `User budget: $${budget} USD.` : ''}
 ${interests?.length ? `User interests: ${interests.join(', ')}.` : ''}
 
-Respond ONLY with valid JSON, no markdown, no code blocks:
+Return this exact JSON structure with exactly 4 items in each array:
 {
   "destination": "${destination}",
   "accommodations": [
-    { "id": "acc-1", "name": "", "type": "accommodation", "category": "", "rating": 4.5, "reviewCount": 100, "priceLevel": 2, "price": "$$", "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&q=90", "description": "", "address": "", "distance": "", "tags": [] }
+    { "id": "acc-1", "name": "Name", "type": "accommodation", "category": "Hotel", "rating": 4.5, "reviewCount": 100, "priceLevel": 2, "price": "$$", "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&q=90", "description": "Simple description", "address": "Address in ${destination}", "distance": "2 km from center", "tags": ["tag1", "tag2"] }
   ],
   "restaurants": [
-    { "id": "rest-1", "name": "", "type": "restaurant", "category": "", "rating": 4.5, "reviewCount": 100, "priceLevel": 2, "price": "$$", "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=90", "description": "", "address": "", "distance": "", "tags": [] }
+    { "id": "rest-1", "name": "Name", "type": "restaurant", "category": "Local Cuisine", "rating": 4.5, "reviewCount": 100, "priceLevel": 2, "price": "$$", "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=90", "description": "Simple description", "address": "Address in ${destination}", "distance": "1 km from center", "tags": ["tag1", "tag2"] }
   ],
   "activities": [
-    { "id": "act-1", "name": "", "type": "activity", "category": "", "rating": 4.5, "reviewCount": 100, "priceLevel": 2, "price": "$$", "image": "https://images.unsplash.com/photo-1533105079780-92b9be482077?w=1200&q=90", "description": "", "address": "", "distance": "", "tags": [] }
+    { "id": "act-1", "name": "Name", "type": "activity", "category": "Sightseeing", "rating": 4.5, "reviewCount": 100, "priceLevel": 1, "price": "$", "image": "https://images.unsplash.com/photo-1533105079780-92b9be482077?w=1200&q=90", "description": "Simple description", "address": "Address in ${destination}", "distance": "3 km from center", "tags": ["tag1", "tag2"] }
   ],
   "landmarks": [
-    { "id": "land-1", "name": "", "type": "landmark", "category": "", "rating": 4.5, "reviewCount": 100, "priceLevel": 1, "price": "Free", "image": "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1200&q=90", "description": "", "address": "", "distance": "", "tags": [] }
+    { "id": "land-1", "name": "Name", "type": "landmark", "category": "Historic Site", "rating": 4.7, "reviewCount": 500, "priceLevel": 1, "price": "Free", "image": "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1200&q=90", "description": "Simple description", "address": "Address in ${destination}", "distance": "1 km from center", "tags": ["tag1", "tag2"] }
   ],
   "history": {
-    "title": "",
-    "content": "",
+    "title": "The Story of ${destination}",
+    "content": "2 paragraphs about ${destination} history using simple ASCII characters only",
     "traditions": [
-      { "name": "", "description": "" }
+      { "name": "Tradition 1", "description": "Simple description" },
+      { "name": "Tradition 2", "description": "Simple description" },
+      { "name": "Tradition 3", "description": "Simple description" }
     ]
   }
-}
-Generate 4 items each for accommodations, restaurants, activities, and landmarks. Include 3 traditions.`;
+}`;
 
   const response = await groq.chat.completions.create({
     model: 'llama-3.1-8b-instant',
     messages: [{ role: 'user', content: prompt }],
-    max_tokens: 3000,
+    max_tokens: 6000,
+    temperature: 0.3,
   });
 
-  const content = response.choices[0].message.content.trim()
-    .replace(/^```json/, '').replace(/^```/, '').replace(/```$/, '').trim();
-
-  return JSON.parse(content);
+  const content = response.choices[0].message.content.trim();
+  return safeParseJson(content);
 }
 
 exports.getRecommendations = async (req, res) => {
@@ -228,25 +292,30 @@ exports.getRecommendations = async (req, res) => {
     return res.status(400).json({ error: 'Destination is required' });
   }
 
+  const normalizedDestination = await correctDestinationName(destination);
+  // Update search stats
+  await updateDestinationStats(normalizedDestination);
+  await saveSearchHistory(req.user?.id, normalizedDestination, budget, interests);
+
   try {
     const activityQuery = interests?.length
-      ? `${interests.slice(0, 2).join(' ')} in ${destination}`
-      : `things to do in ${destination}`;
+      ? `${interests.slice(0, 2).join(' ')} in ${normalizedDestination}`
+      : `things to do in ${normalizedDestination}`;
 
     const [accommodations, restaurantsRaw, activitiesRaw, landmarksRaw, history] = await Promise.all([
-      fetchAccommodationsAI(destination, budget),
-      fetchFromSerpApi(`restaurants in ${destination}`),
+      fetchAccommodationsAI(normalizedDestination, budget),
+      fetchFromSerpApi(`restaurants in ${normalizedDestination}`),
       fetchFromSerpApi(activityQuery),
-      fetchFromSerpApi(`landmarks in ${destination}`),
-      fetchHistoryAI(destination, interests),
+      fetchFromSerpApi(`landmarks in ${normalizedDestination}`),
+      fetchHistoryAI(normalizedDestination, interests),
     ]);
 
-    const restaurants = restaurantsRaw.slice(0, 6).map((p, i) => transformPlace(p, 'restaurant', i, destination));
-    const activities = activitiesRaw.slice(0, 6).map((p, i) => transformPlace(p, 'activity', i, destination));
-    const landmarks = landmarksRaw.slice(0, 6).map((p, i) => transformPlace(p, 'landmark', i, destination));
+    const restaurants = restaurantsRaw.slice(0, 6).map((p, i) => transformPlace(p, 'restaurant', i, normalizedDestination));
+    const activities = activitiesRaw.slice(0, 6).map((p, i) => transformPlace(p, 'activity', i, normalizedDestination));
+    const landmarks = landmarksRaw.slice(0, 6).map((p, i) => transformPlace(p, 'landmark', i, normalizedDestination));
 
     return res.json({
-      destination,
+      destination: normalizedDestination,
       accommodations,
       restaurants,
       activities,
@@ -258,7 +327,7 @@ exports.getRecommendations = async (req, res) => {
     console.error('SerpAPI failed, falling back to AI:', err.message);
 
     try {
-      const data = await fetchAllAI(destination, budget, interests);
+      const data = await fetchAllAI(normalizedDestination, budget, interests);
       return res.json({ ...data, dataSource: 'ai' });
     } catch (aiErr) {
       console.error('AI fallback failed:', aiErr);

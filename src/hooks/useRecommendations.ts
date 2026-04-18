@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { API_URL } from '@/lib/api';
+import { apiRequest } from '@/lib/api';
 
 interface Place {
   id: string;
@@ -43,9 +43,8 @@ export function useRecommendations() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_URL}/recommendations`, {
+      const data = await apiRequest('/recommendations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           destination,
           budget: preferences?.budget,
@@ -53,12 +52,6 @@ export function useRecommendations() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to fetch recommendations');
-      }
-
-      const data = await response.json();
       setRecommendations(data);
 
       toast({

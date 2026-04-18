@@ -3,10 +3,15 @@ const cors = require('cors');
 require('dotenv').config();
 
 const authRoutes = require('./routes/auth');
-const profileRoutes = require('./routes/profile');
 const chatRoutes = require('./routes/chat');
 const recommendationsRoutes = require('./routes/recommendations');
 const savedRoutes = require('./routes/saved');
+const adminRoutes = require('./routes/admin');
+const searchHistoryRoutes = require('./routes/searchHistory');
+const itineraryRoutes = require('./routes/itinerary');
+const checklistRoutes = require('./routes/checklist');
+const budgetRoutes = require('./routes/budget');
+const ratingRoutes = require('./routes/rating');
 
 const app = express();
 
@@ -15,10 +20,15 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/profile', profileRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/recommendations', recommendationsRoutes);
 app.use('/api/saved', savedRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/search-history', searchHistoryRoutes);
+app.use('/api/itinerary', itineraryRoutes);
+app.use('/api/checklist', checklistRoutes);
+app.use('/api/budget', budgetRoutes);
+app.use('/api/ratings', ratingRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

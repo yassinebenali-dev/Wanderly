@@ -51,7 +51,7 @@ export function PlaceCard({ place }: PlaceCardProps) {
             <span className="font-medium text-foreground">{place.rating}</span>
             <span>({place.reviewCount})</span>
           </div>
-          {place.distance && (
+          {place.distance && typeof place.distance === 'string' && (
             <div className="flex items-center gap-1">
               <MapPin className="h-4 w-4" />
               <span>{place.distance}</span>
@@ -67,14 +67,14 @@ export function PlaceCard({ place }: PlaceCardProps) {
         )}
 
         <div className="flex flex-wrap gap-1.5">
-          {place.tags.slice(0, 3).map((tag) => (
+          {(place.tags || []).slice(0, 3).map((tag) => (
             <Badge key={tag} variant="outline" className="text-xs">
               {tag}
             </Badge>
           ))}
-          {place.tags.length > 3 && (
+          {(place.tags || []).length > 3 && (
             <Badge variant="outline" className="text-xs">
-              +{place.tags.length - 3}
+              +{(place.tags || []).length - 3}
             </Badge>
           )}
         </div>

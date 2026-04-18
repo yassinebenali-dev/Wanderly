@@ -3,7 +3,6 @@ import { Send, Mic, MicOff, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChatMessage } from '@/components/ChatMessage';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTravelChat } from '@/hooks/useTravelChat';
 import { useToast } from '@/hooks/use-toast';
 import { UserPreferences } from '@/types/travel';
@@ -20,13 +19,11 @@ export function ChatInterface({ destination, preferences }: ChatInterfaceProps) 
   });
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
@@ -50,7 +47,6 @@ export function ChatInterface({ destination, preferences }: ChatInterfaceProps) 
   const toggleRecording = () => {
     setIsRecording(!isRecording);
     if (!isRecording) {
-      // Start recording simulation
       toast({
         title: '🎙️ Voice Input',
         description: 'Voice recording started...',
@@ -69,7 +65,7 @@ export function ChatInterface({ destination, preferences }: ChatInterfaceProps) 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/30 rounded-2xl border border-border overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-border bg-card/50 backdrop-blur-sm">
+      <div className="flex items-center gap-3 p-4 border-b border-border bg-card/50 backdrop-blur-sm flex-shrink-0">
         <div className="w-10 h-10 rounded-full hero-gradient flex items-center justify-center">
           <Sparkles className="h-5 w-5 text-primary-foreground" />
         </div>
@@ -81,8 +77,8 @@ export function ChatInterface({ destination, preferences }: ChatInterfaceProps) 
         </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      {/* Messages - internal scroll only */}
+      <div className="flex-1 overflow-y-auto p-4 min-h-0">
         <div className="space-y-4">
           {messages.map((message) => (
             <ChatMessage key={message.id} message={message} />
@@ -101,11 +97,13 @@ export function ChatInterface({ destination, preferences }: ChatInterfaceProps) 
               </div>
             </div>
           )}
+          {/* Anchor div to scroll to */}
+          <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Input */}
-      <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm">
+      <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm flex-shrink-0">
         <div className="flex gap-2">
           <Button
             variant="icon"

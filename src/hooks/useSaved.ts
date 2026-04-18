@@ -36,9 +36,8 @@ const saveDestination = useCallback(async (
     recommendations: any,
     budget?: number,
     interests?: string[]
-  ) => {
+  ): Promise<{ id: number } | undefined> => {
     const token = getToken();
-    console.log('Token:', token); // temporary debug
     if (!token) {
       // Save pending data to localStorage before redirecting
       localStorage.setItem('wanderly_pending_save', JSON.stringify({
@@ -61,6 +60,7 @@ const saveDestination = useCallback(async (
       setIsSaved(true);
       setSavedId(data.id);
       toast({ title: 'Destination saved!', description: `${destination} added to your saved destinations` });
+      return { id: data.id };
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {

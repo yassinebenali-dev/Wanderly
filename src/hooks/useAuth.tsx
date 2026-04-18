@@ -6,6 +6,7 @@ interface User {
   id: number;
   email: string;
   display_name?: string;
+  role: string;
 }
 
 interface AuthContextType {
@@ -26,8 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = getToken();
     if (token) {
-      apiRequest('/profile')
-        .then((data) => setUser(data))
+      apiRequest('/auth/verify')
+        .then((data) => setUser(data.user))
         .catch(() => removeToken())
         .finally(() => setLoading(false));
     } else {
@@ -72,7 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             title: 'Trip saved!',
             description: `${destination} has been saved to your destinations`,
           });
-          // Store destination for redirect after auth state loads
           localStorage.setItem('wanderly_redirect_destination', destination);
         } catch {
           localStorage.removeItem('wanderly_pending_save');

@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Search, MapPin, Calendar, Sparkles, DollarSign, Heart } from 'lucide-react';
+import { Search, MapPin, Calendar, Sparkles, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { INTEREST_OPTIONS, UserPreferences } from '@/types/travel';
 import heroVideo from '@/assets/hero-background.mp4';
 
@@ -17,12 +16,25 @@ export function HeroSection({ onSearch }: HeroSectionProps) {
   const [budget, setBudget] = useState('');
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
 
-  const handleSearch = () => {
+  const today = new Date().toISOString().split('T')[0];
+
+ const handleSearch = () => {
     if (destination.trim()) {
       onSearch(destination, {
         budget: budget ? parseInt(budget) : undefined,
         interests: selectedInterests,
+        arrivalDate: arrivalDate || undefined,
+        departureDate: departureDate || undefined,
       });
+    }
+  };
+
+  const handleArrivalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newArrival = e.target.value;
+    setArrivalDate(newArrival);
+    // Reset departure if it's before the new arrival date
+    if (departureDate && departureDate <= newArrival) {
+      setDepartureDate('');
     }
   };
 
@@ -63,7 +75,7 @@ export function HeroSection({ onSearch }: HeroSectionProps) {
           Personalized recommendations for stays, dining, and experiences — all powered by intelligent AI.
         </p>
 
-        {/* Modern Search Card — minimal, airy */}
+        {/* Modern Search Card */}
         <div className="max-w-3xl mx-auto bg-card/80 backdrop-blur-2xl rounded-[2rem] shadow-2xl p-6 md:p-8 border border-border/30">
           {/* Destination + Dates row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
@@ -79,26 +91,28 @@ export function HeroSection({ onSearch }: HeroSectionProps) {
               </div>
             </div>
             <div className="relative">
-              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70 z-10" />
               <Input
                 type="date"
                 value={arrivalDate}
-                onChange={(e) => setArrivalDate(e.target.value)}
+                min={today}
+                onChange={handleArrivalChange}
                 className="pl-10 h-12 rounded-2xl bg-muted/40 border-0 focus:bg-card focus:ring-1 focus:ring-primary/30 text-sm"
               />
             </div>
             <div className="relative">
-              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
+              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70 z-10" />
               <Input
                 type="date"
                 value={departureDate}
+                min={arrivalDate || today}
                 onChange={(e) => setDepartureDate(e.target.value)}
                 className="pl-10 h-12 rounded-2xl bg-muted/40 border-0 focus:bg-card focus:ring-1 focus:ring-primary/30 text-sm"
               />
             </div>
           </div>
 
-          {/* Budget — inline compact */}
+          {/* Budget */}
           <div className="flex items-center gap-3 mb-4">
             <div className="relative flex-shrink-0 w-40">
               <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
@@ -114,7 +128,7 @@ export function HeroSection({ onSearch }: HeroSectionProps) {
             <span className="text-xs text-muted-foreground hidden md:inline">Max trip budget (USD)</span>
           </div>
 
-          {/* Interests — compact pills */}
+          {/* Interests */}
           <div className="flex flex-wrap gap-1.5 mb-5">
             {INTEREST_OPTIONS.map((interest) => (
               <button
@@ -143,7 +157,7 @@ export function HeroSection({ onSearch }: HeroSectionProps) {
           </Button>
         </div>
 
-        {/* Popular — minimal inline */}
+        {/* Trending */}
         <div className="mt-8 flex flex-wrap justify-center gap-2 items-center">
           <span className="text-xs text-primary-foreground/40 uppercase tracking-wider mr-1">Trending</span>
           {['Paris', 'Tokyo', 'New York', 'Barcelona', 'Bali'].map((city) => (

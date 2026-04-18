@@ -1,4 +1,19 @@
 const pool = require('../config/db');
+const { correctDestinationName, normalizeDestination } = require('../utils/destinationUtils');
+
+const updateSaveCount = async (destination, increment) => {
+  try {
+    await pool.query(
+      `INSERT INTO destination_stats (destination, search_count, save_count)
+       VALUES (?, 0, ?)
+       ON DUPLICATE KEY UPDATE
+       save_count = GREATEST(0, save_count + ?)`,
+      [destination, increment, increment]
+    );
+  } catch (err) {
+    console.error('Save count update error:', err);
+  }
+};
 
 exports.saveDestination = async (req, res) => {
   const { destination, budget, interests, recommendations } = req.body;
@@ -7,11 +22,12 @@ exports.saveDestination = async (req, res) => {
     return res.status(400).json({ error: 'Destination and recommendations are required' });
   }
 
+  const normalizedDestination = await correctDestinationName(destination);
+
   try {
-    // Check if already saved
     const [existing] = await pool.query(
       'SELECT id FROM saved_destinations WHERE user_id = ? AND destination = ?',
-      [req.user.id, destination]
+      [req.user.id, normalizedDestination]
     );
 
     if (existing.length > 0) {
@@ -22,12 +38,14 @@ exports.saveDestination = async (req, res) => {
       'INSERT INTO saved_destinations (user_id, destination, budget, interests, recommendations) VALUES (?, ?, ?, ?, ?)',
       [
         req.user.id,
-        destination,
+        normalizedDestination,
         budget || null,
         JSON.stringify(interests || []),
         JSON.stringify(recommendations),
       ]
     );
+
+    await updateSaveCount(normalizedDestination, 1);
 
     res.status(201).json({ id: result.insertId, message: 'Destination saved successfully' });
   } catch (err) {
@@ -60,14 +78,23 @@ exports.deleteDestination = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [result] = await pool.query(
+    const [rows] = await pool.query(
+      'SELECT destination FROM saved_destinations WHERE id = ? AND user_id = ?',
+      [id, req.user.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Saved destination not found' });
+    }
+
+    const destination = rows[0].destination;
+
+    await pool.query(
       'DELETE FROM saved_destinations WHERE id = ? AND user_id = ?',
       [id, req.user.id]
     );
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Saved destination not found' });
-    }
+    await updateSaveCount(destination, -1);
 
     res.json({ message: 'Destination removed successfully' });
   } catch (err) {
@@ -80,9 +107,11 @@ exports.checkSaved = async (req, res) => {
   const { destination } = req.params;
 
   try {
+    const normalizedDestination = await correctDestinationName(destination);
+
     const [rows] = await pool.query(
       'SELECT id FROM saved_destinations WHERE user_id = ? AND destination = ?',
-      [req.user.id, destination]
+      [req.user.id, normalizedDestination]
     );
 
     res.json({ saved: rows.length > 0, id: rows[0]?.id || null });

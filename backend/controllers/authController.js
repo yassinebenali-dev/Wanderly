@@ -5,7 +5,7 @@ require('dotenv').config();
 
 const generateToken = (user) => {
   return jwt.sign(
-    { id: user.id, email: user.email },
+    { id: user.id, email: user.email, role: user.role || 'user' },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
@@ -31,11 +31,13 @@ exports.register = async (req, res) => {
       [email, password_hash, display_name || null]
     );
 
-    const user = { id: result.insertId, email };
+    const user = { id: result.insertId, email, role: 'user' };
     const token = generateToken(user);
 
-  
-    res.status(201).json({ token, user: { id: result.insertId, email, display_name } });
+    res.status(201).json({
+      token,
+      user: { id: result.insertId, email, display_name, role: 'user' }
+    });
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: 'Server error' });
@@ -63,7 +65,10 @@ exports.login = async (req, res) => {
 
     const token = generateToken(user);
 
-    res.json({ token, user: { id: user.id, email: user.email, display_name: user.display_name } });
+    res.json({
+      token,
+      user: { id: user.id, email: user.email, display_name: user.display_name, role: user.role }
+    });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server error' });

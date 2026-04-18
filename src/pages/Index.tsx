@@ -5,12 +5,16 @@ import { ChatInterface } from '@/components/ChatInterface';
 import { TravelDashboard } from '@/components/TravelDashboard';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, X, Plane, Globe, Users, Star, Compass, ArrowRight, Sparkles, Shield, Zap, LogOut, Bookmark, BookmarkCheck, User, ChevronDown, Loader2 } from 'lucide-react';
+import { MessageCircle, X, Plane, Compass, Clock, ArrowRight, Sparkles, Shield, Zap, LogOut, Bookmark, BookmarkCheck, User, ChevronDown, Loader2, LayoutDashboard } from 'lucide-react';
 import ctaBackground from '@/assets/cta-background.jpg';
 import { useRecommendations } from '@/hooks/useRecommendations';
 import { UserPreferences, INTEREST_OPTIONS } from '@/types/travel';
 import { useAuth } from '@/hooks/useAuth';
 import { useSaved } from '@/hooks/useSaved';
+import { Itinerary } from '@/hooks/useItinerary';
+import { Checklist } from '@/hooks/useChecklist';
+import { Budget } from '@/hooks/useBudget';
+import { apiRequest } from '@/lib/api';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +30,9 @@ const Index = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [savedRecommendations, setSavedRecommendations] = useState<any>(null);
+  const [currentItinerary, setCurrentItinerary] = useState<Itinerary | null>(null);
+  const [currentChecklist, setCurrentChecklist] = useState<Checklist | null>(null);
+  const [currentBudget, setCurrentBudget] = useState<Budget | null>(null);
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,65 +46,137 @@ const Index = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Handle loading from saved destination
-useEffect(() => {
-  if (location.state?.savedItem) {
-    const saved = location.state.savedItem;
-    setDestination(saved.destination);
-    setPreferences({ budget: saved.budget, interests: saved.interests || [] });
-    setSavedRecommendations(saved.recommendations);
-    setShowDashboard(true);
-  }
-}, [location.state]);
+  useEffect(() => {
+    if (location.state?.savedItem) {
+      const saved = location.state.savedItem;
+      setDestination(saved.destination);
+      setPreferences({ budget: saved.budget, interests: saved.interests || [] });
+      setSavedRecommendations(saved.recommendations);
+      setShowDashboard(true);
 
-  // Check if current destination is saved
+      apiRequest(`/itinerary/${saved.id}`)
+        .then((data) => {
+          if (data?.itinerary) setCurrentItinerary(data.itinerary);
+        })
+        .catch(() => {});
+
+      apiRequest(`/checklist/${saved.id}`)
+        .then((data) => {
+          if (data?.items) setCurrentChecklist(data.items);
+        })
+        .catch(() => {});
+
+      apiRequest(`/budget/${saved.id}`)
+        .then((data) => {
+          if (data?.total_budget) {
+            setCurrentBudget({ total_budget: data.total_budget, categories: data.categories });
+          }
+        })
+        .catch(() => {});
+
+    } else if (location.state?.reSearch) {
+      const { destination, budget, interests } = location.state.reSearch;
+      handleSearch(destination, { budget, interests: interests || [] });
+    }
+  }, [location.state]);
+
   useEffect(() => {
     if (destination && user) {
       checkIfSaved(destination);
     }
   }, [destination, user]);
 
-
-useEffect(() => {
-  const redirectDest = localStorage.getItem('wanderly_redirect_destination');
-  if (redirectDest) {
-    const pending = localStorage.getItem('wanderly_pending_save');
-    if (pending) {
-      try {
-        const { destination, recommendations, budget, interests } = JSON.parse(pending);
-        setDestination(destination);
-        setPreferences({ budget, interests: interests || [] });
-        setSavedRecommendations(recommendations);
-        setShowDashboard(true);
-        localStorage.removeItem('wanderly_pending_save');
-        localStorage.removeItem('wanderly_redirect_destination');
-      } catch (e) {
-        localStorage.removeItem('wanderly_pending_save');
-        localStorage.removeItem('wanderly_redirect_destination');
+  useEffect(() => {
+    const redirectDest = localStorage.getItem('wanderly_redirect_destination');
+    if (redirectDest) {
+      const pending = localStorage.getItem('wanderly_pending_save');
+      if (pending) {
+        try {
+          const { destination, recommendations, budget, interests } = JSON.parse(pending);
+          setDestination(destination);
+          setPreferences({ budget, interests: interests || [] });
+          setSavedRecommendations(recommendations);
+          setShowDashboard(true);
+          localStorage.removeItem('wanderly_pending_save');
+          localStorage.removeItem('wanderly_redirect_destination');
+        } catch (e) {
+          localStorage.removeItem('wanderly_pending_save');
+          localStorage.removeItem('wanderly_redirect_destination');
+        }
       }
     }
-  }
-}, []);
+  }, []);
 
   const handleSearch = async (dest: string, prefs: UserPreferences) => {
     setDestination(dest);
     setPreferences(prefs);
     setShowDashboard(true);
+    setCurrentItinerary(null);
+    setCurrentChecklist(null);
+    setCurrentBudget(null);
     await fetchRecommendations(dest, prefs);
   };
 
   const handleBackToSearch = () => {
-  setShowDashboard(false);
-  setDestination('');
-  setPreferences({ interests: [] });
-  clearRecommendations();
-  setSavedRecommendations(null);
-};
+    setShowDashboard(false);
+    setDestination('');
+    setPreferences({ interests: [] });
+    clearRecommendations();
+    setSavedRecommendations(null);
+    setCurrentItinerary(null);
+    setCurrentChecklist(null);
+    setCurrentBudget(null);
+  };
+
   const handleSaveToggle = async () => {
     if (isSaved && savedId) {
       await unsaveDestination(savedId, destination);
     } else if (recommendations) {
-      await saveDestination(destination, recommendations, preferences.budget, preferences.interests);
+      const result = await saveDestination(destination, recommendations, preferences.budget, preferences.interests);
+
+      if (currentItinerary && result?.id) {
+        try {
+          await apiRequest('/itinerary/save', {
+            method: 'POST',
+            body: JSON.stringify({
+              saved_destination_id: result.id,
+              itinerary: currentItinerary,
+              nb_days: currentItinerary.nb_days,
+            }),
+          });
+        } catch (err) {
+          console.error('Failed to auto-save itinerary:', err);
+        }
+      }
+
+      if (currentChecklist && result?.id) {
+        try {
+          await apiRequest('/checklist/save', {
+            method: 'POST',
+            body: JSON.stringify({
+              saved_destination_id: result.id,
+              items: currentChecklist,
+            }),
+          });
+        } catch (err) {
+          console.error('Failed to auto-save checklist:', err);
+        }
+      }
+
+      if (currentBudget && result?.id) {
+        try {
+          await apiRequest('/budget/save', {
+            method: 'POST',
+            body: JSON.stringify({
+              saved_destination_id: result.id,
+              total_budget: currentBudget.total_budget,
+              categories: currentBudget.categories,
+            }),
+          });
+        } catch (err) {
+          console.error('Failed to auto-save budget:', err);
+        }
+      }
     }
   };
 
@@ -108,10 +187,46 @@ useEffect(() => {
       .join(', ');
   };
 
+  const UserDropdown = ({ scrolled = false }: { scrolled?: boolean }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className={`flex items-center gap-2 text-sm transition-colors duration-500 ${
+          scrolled ? 'text-muted-foreground hover:text-foreground' : 'text-primary-foreground/70 hover:text-primary-foreground'
+        }`}>
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+            <User className="h-4 w-4" />
+          </div>
+          <span className="hidden md:block">{user?.display_name || user?.email}</span>
+          <ChevronDown className="h-3.5 w-3.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onClick={() => navigate('/saved')}>
+          <Bookmark className="h-4 w-4 mr-2" />
+          Saved Destinations
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/search-history')}>
+          <Clock className="h-4 w-4 mr-2" />
+          Search History
+        </DropdownMenuItem>
+        {user?.role === 'admin' && (
+          <DropdownMenuItem onClick={() => navigate('/admin')}>
+            <LayoutDashboard className="h-4 w-4 mr-2" />
+            Admin Dashboard
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => signOut()} className="text-red-500">
+          <LogOut className="h-4 w-4 mr-2" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   if (!showDashboard) {
     return (
       <div className="min-h-screen bg-background">
-        {/* Scroll-aware Header */}
         <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           scrolled
             ? 'bg-background/90 backdrop-blur-xl border-b border-border shadow-sm'
@@ -120,7 +235,7 @@ useEffect(() => {
           <div className="container mx-auto px-4 h-16 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg hero-gradient flex items-center justify-center">
-                <Plane className="h-3.5 w-3.5 text-primary-foreground" />
+                <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
               </div>
               <span className={`font-display font-bold text-lg transition-colors duration-500 ${
                 scrolled ? 'text-foreground' : 'text-primary-foreground'
@@ -140,30 +255,7 @@ useEffect(() => {
               ))}
             </nav>
             {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className={`flex items-center gap-2 text-sm transition-colors duration-500 ${
-                    scrolled ? 'text-muted-foreground hover:text-foreground' : 'text-primary-foreground/70 hover:text-primary-foreground'
-                  }`}>
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                      <User className="h-4 w-4" />
-                    </div>
-                    <span className="hidden md:block">{user.display_name || user.email}</span>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => navigate('/saved')}>
-                    <Bookmark className="h-4 w-4 mr-2" />
-                    Saved Destinations
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => signOut()} className="text-red-500">
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <UserDropdown scrolled={scrolled} />
             ) : (
               <Button
                 variant="outline"
@@ -182,7 +274,6 @@ useEffect(() => {
         <main>
           <HeroSection onSearch={handleSearch} />
 
-          {/* How It Works */}
           <section className="py-28">
             <div className="container mx-auto px-4">
               <div className="text-center mb-16">
@@ -218,7 +309,6 @@ useEffect(() => {
             </div>
           </section>
 
-          {/* CTA */}
           <section className="py-24">
             <div className="container mx-auto px-4">
               <div className="relative overflow-hidden rounded-3xl p-12 md:p-20 min-h-[400px] flex items-center">
@@ -248,7 +338,6 @@ useEffect(() => {
 
         <Footer />
 
-        {/* Chat FAB */}
         <div className="fixed bottom-6 right-6 z-50">
           {isChatOpen ? (
             <div className="w-[380px] h-[550px] animate-slide-up">
@@ -271,13 +360,13 @@ useEffect(() => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
+    <div className="h-screen overflow-hidden bg-background flex flex-col">
+      <header className="flex-shrink-0 bg-background/80 backdrop-blur-xl border-b border-border z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={handleBackToSearch} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <div className="w-8 h-8 rounded-lg hero-gradient flex items-center justify-center">
-                <Plane className="h-3.5 w-3.5 text-primary-foreground" />
+                <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
               </div>
               <span className="font-display font-bold text-lg text-foreground">Wanderly</span>
             </button>
@@ -295,9 +384,7 @@ useEffect(() => {
               )}
             </div>
           </div>
-
           <div className="flex items-center gap-2">
-            {/* Save button in header */}
             {recommendations && (
               <Button
                 variant="outline"
@@ -323,32 +410,12 @@ useEffect(() => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-8rem)]">
-          <div className="lg:col-span-1 h-full">
+      <main className="flex-1 overflow-hidden container mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+          <div className="lg:col-span-1 h-full overflow-hidden">
             <ChatInterface destination={destination} preferences={preferences} />
           </div>
-          <div className="lg:col-span-2 h-full overflow-auto relative">
-            {/* Floating save button */}
-            {recommendations && (
-              <div className="absolute top-4 right-4 z-10">
-                <Button
-                  size="sm"
-                  className="rounded-full shadow-lg"
-                  onClick={handleSaveToggle}
-                  disabled={saveLoading}
-                >
-                  {saveLoading ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : isSaved ? (
-                    <BookmarkCheck className="h-3.5 w-3.5" />
-                  ) : (
-                    <Bookmark className="h-3.5 w-3.5" />
-                  )}
-                  {isSaved ? 'Saved!' : 'Save Trip'}
-                </Button>
-              </div>
-            )}
+          <div className="lg:col-span-2 h-full overflow-y-auto relative">
             <TravelDashboard
               accommodations={(savedRecommendations || recommendations)?.accommodations}
               restaurants={(savedRecommendations || recommendations)?.restaurants}
@@ -357,6 +424,14 @@ useEffect(() => {
               history={(savedRecommendations || recommendations)?.history}
               isLoading={isLoading}
               destination={destination}
+              preferences={preferences}
+              savedDestinationId={isSaved ? savedId ?? undefined : undefined}
+              onItineraryChange={setCurrentItinerary}
+              existingItinerary={currentItinerary}
+              existingChecklist={currentChecklist}
+              onChecklistChange={setCurrentChecklist}
+              existingBudget={currentBudget}
+              onBudgetChange={setCurrentBudget}
             />
           </div>
         </div>
