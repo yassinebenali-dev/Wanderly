@@ -58,7 +58,7 @@ export function HeroSection({ onSearch }: HeroSectionProps) {
         src={heroVideo}
       />
       {/* Gradient overlay for depth */}
-      <div className="absolute inset-0 bg-gradient-to-b from-foreground/60 via-foreground/40 to-foreground/70" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
 
       <div className="relative z-10 container mx-auto px-4 text-center pt-24 pb-12">
         <div className="mb-5 inline-flex items-center gap-2 bg-primary-foreground/8 text-primary-foreground border border-primary-foreground/15 rounded-full px-4 py-2 text-xs font-medium backdrop-blur-md tracking-wide">

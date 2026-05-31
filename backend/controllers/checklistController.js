@@ -3,6 +3,7 @@ const Groq = require('groq-sdk');
 require('dotenv').config();
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const { checkLimit, incrementUsage } = require('./subscriptionController');
 
 const JSON_RULES = `
 CRITICAL FORMATTING RULES:
@@ -100,6 +101,15 @@ exports.generateChecklist = async (req, res) => {
   if (!destination) {
     return res.status(400).json({ error: 'Destination is required' });
   }
+  const limitCheck = await checkLimit(req.user.id, 'checklists');
+if (!limitCheck.allowed) {
+  return res.status(429).json({
+    error: limitCheck.message,
+    limitReached: true,
+    field: 'checklists'
+  });
+}
+await incrementUsage(req.user.id, 'checklists');
 
   try {
     const checklist = await generateChecklistAI(destination, interests, budget);

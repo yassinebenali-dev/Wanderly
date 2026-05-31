@@ -106,9 +106,13 @@ export function useTravelChat({ destination, preferences }: UseTravelChatOptions
     let assistantContent = '';
 
     try {
+      const token = localStorage.getItem('wanderly_token');
       const response = await fetch(CHAT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           messages: historyForAI,
           destination,

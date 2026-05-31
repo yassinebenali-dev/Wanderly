@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSearchHistory } from '@/hooks/useSearchHistory';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Footer } from '@/components/Footer';
 import { Plane, Search, Trash2, Clock, DollarSign, Tag, ArrowRight, Sparkles } from 'lucide-react';
 import { INTEREST_OPTIONS } from '@/types/travel';
@@ -52,13 +53,12 @@ const SearchHistory = () => {
           <span className="font-display font-bold text-lg text-foreground">Wanderly</span>
         </button>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => navigate('/saved')}>
-            Saved Destinations
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+            <ThemeToggle scrolled={true} />
+            <Button variant="outline" size="sm" onClick={() => navigate('/')}>
             Back to Home
           </Button>
-        </div>
+          </div>
+          
       </header>
 
       <div className="container mx-auto px-6 py-8 flex-1">

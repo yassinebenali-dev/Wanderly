@@ -99,10 +99,10 @@ export function TravelDashboard({
     return 3;
   };
 
-  const handleGenerateItinerary = async () => {
+  const handleGenerateItinerary = async (nbDays?: number) => {
     if (!destination) return;
-    const nbDays = calculateDays();
-    const result = await generateItinerary(destination, nbDays, preferences?.budget, preferences?.interests);
+    const days = nbDays || calculateDays();
+    const result = await generateItinerary(destination, days, preferences?.budget, preferences?.interests);
     if (result) {
       onItineraryChange?.(result);
       setItineraryChanged(true);

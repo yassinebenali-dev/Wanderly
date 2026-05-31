@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { checkLimit, incrementUsage } = require('./subscriptionController');
 
 exports.saveBudget = async (req, res) => {
   const { saved_destination_id, total_budget, categories } = req.body;
@@ -21,7 +22,24 @@ exports.saveBudget = async (req, res) => {
       'SELECT id FROM budgets WHERE saved_destination_id = ?',
       [saved_destination_id]
     );
+    // Only count new budgets, not updates
+const [existingBudget] = await pool.query(
+  'SELECT id FROM budgets WHERE saved_destination_id = ?',
+  [saved_destination_id]
+);
 
+if (existingBudget.length === 0) {
+  const limitCheck = await checkLimit(req.user.id, 'budgets');
+  if (!limitCheck.allowed) {
+    return res.status(429).json({
+      error: limitCheck.message,
+      limitReached: true,
+      field: 'budgets'
+    });
+  }
+  await incrementUsage(req.user.id, 'budgets');
+}
+    
     if (existing.length > 0) {
       await pool.query(
         'UPDATE budgets SET total_budget = ?, categories = ? WHERE saved_destination_id = ?',

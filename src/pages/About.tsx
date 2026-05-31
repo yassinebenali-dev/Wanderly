@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Plane, Globe, Users, Star, Compass, MapPin, Shield, Zap,
   Heart, Clock, Award, CheckCircle, Mail, Phone, MessageCircle,
-  ArrowRight, Sparkles, TrendingUp, Map
+  ArrowRight, Sparkles, TrendingUp, Map, User, ChevronDown,
+  LogOut, Bookmark, Crown, LayoutDashboard
 } from 'lucide-react';
 import aboutHero from '@/assets/about-hero.jpg';
 import aboutMission from '@/assets/about-mission.jpg';
@@ -15,6 +25,8 @@ import aboutAdvantage from '@/assets/about-advantage.jpg';
 
 const About = () => {
   const [scrolled, setScrolled] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -35,17 +47,79 @@ const About = () => {
             <div className="w-9 h-9 rounded-xl hero-gradient flex items-center justify-center">
               <Plane className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className={`font-display font-bold text-xl transition-colors ${scrolled ? 'text-foreground' : 'text-primary-foreground'}`}>Wanderly</span>
+            <span className={`font-display font-bold text-xl transition-colors ${
+              scrolled ? 'text-foreground' : 'text-primary-foreground'
+            }`}>Wanderly</span>
           </Link>
+
           <nav className="hidden md:flex items-center gap-8">
-            <Link to="/" className={`text-sm font-medium transition-colors ${scrolled ? 'text-muted-foreground hover:text-foreground' : 'text-primary-foreground/80 hover:text-primary-foreground'}`}>Home</Link>
-            <span className={`text-sm font-medium ${scrolled ? 'text-foreground' : 'text-primary-foreground'}`}>About</span>
+            {[
+              { label: 'Destinations', href: '/' },
+              { label: 'Experiences', href: '/experiences' },
+              { label: 'About', href: '/about' },
+            ].map((item) => (
+              <Link key={item.label} to={item.href} className={`text-sm font-medium transition-colors duration-500 ${
+                scrolled
+                  ? 'text-muted-foreground hover:text-foreground'
+                  : 'text-primary-foreground/70 hover:text-primary-foreground'
+              }`}>{item.label}</Link>
+            ))}
           </nav>
-          <Link to="/">
-            <Button variant="outline" size="sm" className={`rounded-full ${scrolled ? '' : 'border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10'}`}>
-              Start Planning
-            </Button>
-          </Link>
+
+          <div className="flex items-center gap-3">
+            <ThemeToggle scrolled={scrolled} />
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className={`flex items-center gap-2 text-sm transition-colors duration-500 ${
+                    scrolled ? 'text-muted-foreground hover:text-foreground' : 'text-primary-foreground/70 hover:text-primary-foreground'
+                  }`}>
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      <User className="h-4 w-4" />
+                    </div>
+                    <span className="hidden md:block">{user.display_name || user.email}</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => navigate('/saved')}>
+                    <Bookmark className="h-4 w-4 mr-2" />
+                    Saved Destinations
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/search-history')}>
+                    <Clock className="h-4 w-4 mr-2" />
+                    Search History
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/subscription')}>
+                    <Crown className="h-4 w-4 mr-2" />
+                    My Subscription
+                  </DropdownMenuItem>
+                  {user.role === 'admin' && (
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <LayoutDashboard className="h-4 w-4 mr-2" />
+                      Admin Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => signOut()} className="text-red-500">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className={`rounded-full text-xs transition-all duration-500 ${
+                  !scrolled && 'border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10'
+                }`}
+                onClick={() => navigate('/auth')}
+              >
+                Sign In
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -53,17 +127,17 @@ const About = () => {
         {/* Hero with background image */}
         <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
           <img src={aboutHero} alt="Mediterranean coastline at sunset" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-foreground/55" />
+          <div className="absolute inset-0 bg-black/55" />
           <div className="container mx-auto px-4 relative z-10 text-center py-32">
-            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-foreground/15 backdrop-blur-sm text-primary-foreground text-sm font-medium mb-6 border border-primary-foreground/20">
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 backdrop-blur-sm text-white text-sm font-medium mb-6 border border-white/20">
               <Sparkles className="h-4 w-4" />
               About Wanderly
             </span>
-            <h1 className="font-display text-4xl md:text-6xl font-bold text-primary-foreground mb-6 leading-tight">
+            <h1 className="font-display text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
               Redefining Travel with{' '}
               <span className="text-accent">Artificial Intelligence</span>
             </h1>
-            <p className="text-lg md:text-xl text-primary-foreground/85 leading-relaxed max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-white/85 leading-relaxed max-w-2xl mx-auto">
               Wanderly is an AI-powered travel companion that transforms how you discover, plan, and experience destinations around the world.
             </p>
           </div>
@@ -107,7 +181,7 @@ const About = () => {
               </div>
               <div className="relative rounded-2xl overflow-hidden shadow-card">
                 <img src={aboutMission} alt="European village street at golden hour" className="w-full h-80 md:h-[28rem] object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-foreground/30 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-6 grid grid-cols-2 gap-3">
                   {[
                     { icon: Heart, title: 'Personalized' },
@@ -137,7 +211,6 @@ const About = () => {
                 Everything You Need to Travel Smarter
               </h2>
             </div>
-
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {[
                 { icon: Map, title: 'Smart Destination Discovery', desc: 'AI analyzes thousands of destinations to match your preferences, season, and budget.' },
@@ -173,7 +246,6 @@ const About = () => {
                   The Wanderly Advantage
                 </h2>
               </div>
-
               <div className="space-y-5">
                 {[
                   'AI-powered recommendations that learn from your preferences over time',
@@ -206,7 +278,6 @@ const About = () => {
                   Have questions, feedback, or partnership inquiries? Reach out to our team.
                 </p>
               </div>
-
               <div className="grid sm:grid-cols-3 gap-6">
                 {[
                   { icon: Mail, title: 'Email Us', value: 'hello@wanderly.ai', subtitle: 'We reply within 24 hours' },
@@ -230,12 +301,12 @@ const About = () => {
         {/* CTA with background image */}
         <section className="relative py-28 overflow-hidden">
           <img src={aboutCta} alt="Santorini sunset panorama" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-foreground/60" />
+          <div className="absolute inset-0 bg-black/60" />
           <div className="container mx-auto px-4 text-center relative z-10">
-            <h2 className="font-display text-3xl md:text-5xl font-bold text-primary-foreground mb-4">
+            <h2 className="font-display text-3xl md:text-5xl font-bold text-white mb-4">
               Ready to Explore the World?
             </h2>
-            <p className="text-primary-foreground/85 max-w-xl mx-auto mb-8 text-lg">
+            <p className="text-white/85 max-w-xl mx-auto mb-8 text-lg">
               Start planning your next adventure with Wanderly's AI-powered travel companion.
             </p>
             <Link to="/">

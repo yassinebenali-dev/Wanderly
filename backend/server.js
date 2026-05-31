@@ -12,6 +12,7 @@ const itineraryRoutes = require('./routes/itinerary');
 const checklistRoutes = require('./routes/checklist');
 const budgetRoutes = require('./routes/budget');
 const ratingRoutes = require('./routes/rating');
+const subscriptionRoutes = require('./routes/subscription');
 
 const app = express();
 
@@ -29,6 +30,8 @@ app.use('/api/itinerary', itineraryRoutes);
 app.use('/api/checklist', checklistRoutes);
 app.use('/api/budget', budgetRoutes);
 app.use('/api/ratings', ratingRoutes);
+app.use('/api/subscription', subscriptionRoutes);
+
 
 // Health check
 app.get('/api/health', (req, res) => {

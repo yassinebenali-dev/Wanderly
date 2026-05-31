@@ -10,6 +10,7 @@ import Experiences from "./pages/Experiences";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Admin from './pages/Admin';
+import Subscription from '@/pages/Subscription';
 import SearchHistory from './pages/SearchHistory';
 import SavedDestinations from "./pages/SavedDestinations";
 
@@ -19,7 +20,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
+        <Toaster  />
         <Sonner />
         <BrowserRouter>
           <Routes>
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/saved" element={<SavedDestinations />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/subscription" element={<Subscription />} />
             <Route path="/search-history" element={<SearchHistory />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

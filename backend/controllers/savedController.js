@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { correctDestinationName, normalizeDestination } = require('../utils/destinationUtils');
+const { checkLimit, incrementUsage } = require('./subscriptionController');
 
 const updateSaveCount = async (destination, increment) => {
   try {
@@ -23,7 +24,15 @@ exports.saveDestination = async (req, res) => {
   }
 
   const normalizedDestination = await correctDestinationName(destination);
-
+  const limitCheck = await checkLimit(req.user.id, 'saved');
+    if (!limitCheck.allowed) {
+      return res.status(429).json({
+        error: limitCheck.message,
+        limitReached: true,
+        field: 'saved'
+      });
+    }
+await incrementUsage(req.user.id, 'saved');
   try {
     const [existing] = await pool.query(
       'SELECT id FROM saved_destinations WHERE user_id = ? AND destination = ?',

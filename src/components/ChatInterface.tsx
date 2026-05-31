@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Mic, MicOff, Sparkles } from 'lucide-react';
+import { Send, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChatMessage } from '@/components/ChatMessage';
@@ -18,7 +18,6 @@ export function ChatInterface({ destination, preferences }: ChatInterfaceProps) 
     preferences,
   });
   const [input, setInput] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -42,24 +41,6 @@ export function ChatInterface({ destination, preferences }: ChatInterfaceProps) 
     const message = input;
     setInput('');
     await sendMessage(message);
-  };
-
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    if (!isRecording) {
-      toast({
-        title: '🎙️ Voice Input',
-        description: 'Voice recording started...',
-      });
-      setTimeout(() => {
-        setIsRecording(false);
-        setInput('I want to visit Paris for a romantic getaway next month');
-        toast({
-          title: '✓ Voice Captured',
-          description: 'Your message is ready to send!',
-        });
-      }, 2000);
-    }
   };
 
   return (
@@ -105,14 +86,7 @@ export function ChatInterface({ destination, preferences }: ChatInterfaceProps) 
       {/* Input */}
       <div className="p-4 border-t border-border bg-card/50 backdrop-blur-sm flex-shrink-0">
         <div className="flex gap-2">
-          <Button
-            variant="icon"
-            size="icon"
-            onClick={toggleRecording}
-            className={isRecording ? 'bg-destructive text-destructive-foreground animate-pulse' : ''}
-          >
-            {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-          </Button>
+          
 
           <Input
             value={input}
@@ -127,11 +101,6 @@ export function ChatInterface({ destination, preferences }: ChatInterfaceProps) 
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        {isRecording && (
-          <p className="text-xs text-center text-muted-foreground mt-2 animate-pulse">
-            🎙️ Listening... Speak now
-          </p>
-        )}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ const Groq = require('groq-sdk');
 require('dotenv').config();
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const { checkLimit, incrementUsage } = require('./subscriptionController');
 
 function getSystemPrompt(destination, budget, interests) {
   const interestLabels = {
@@ -43,7 +44,17 @@ exports.chat = async (req, res) => {
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'Messages are required' });
   }
-
+  if (req.user?.id) {
+  const limitCheck = await checkLimit(req.user.id, 'chat_messages');
+  if (!limitCheck.allowed) {
+    return res.status(429).json({
+      error: limitCheck.message,
+      limitReached: true,
+      field: 'chat_messages'
+    });
+  }
+  await incrementUsage(req.user.id, 'chat_messages');
+}
   try {
     const systemPrompt = getSystemPrompt(destination, budget, interests);
 

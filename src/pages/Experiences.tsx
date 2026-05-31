@@ -15,6 +15,7 @@ import {
 import experiencesHero from '@/assets/experiences-hero.jpg';
 import expAdventure from '@/assets/exp-adventure.jpg';
 import expCulinary from '@/assets/exp-culinary.jpg';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import expCulture from '@/assets/exp-culture.jpg';
 import expWellness from '@/assets/exp-wellness.jpg';
 import expNightlife from '@/assets/exp-nightlife.jpg';
@@ -112,7 +113,8 @@ const Experiences = () => {
               }`}>{item.label}</Link>
             ))}
           </nav>
-
+          <div className="flex items-center gap-3">
+            <ThemeToggle scrolled={scrolled} />
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -156,6 +158,7 @@ const Experiences = () => {
               Sign In
             </Button>
           )}
+          </div>
         </div>
       </header>
 
@@ -163,13 +166,13 @@ const Experiences = () => {
         {/* Hero */}
         <section className="relative h-[70vh] min-h-[500px] flex items-center justify-center overflow-hidden">
           <img src={experiencesHero} alt="Hot air balloons over Cappadocia" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-foreground/50" />
+          <div className="absolute inset-0 bg-black/50" />
           <div className="relative z-10 text-center px-4 max-w-3xl mx-auto">
-            <span className="text-sm font-medium text-primary-foreground/80 uppercase tracking-widest mb-4 block">Curated by AI</span>
-            <h1 className="font-display text-4xl md:text-6xl font-bold text-primary-foreground mb-5 leading-tight">
+            <span className="text-sm font-medium text-white/80 uppercase tracking-widest mb-4 block">Curated by AI</span>
+            <h1 className="font-display text-4xl md:text-6xl font-bold text-white mb-5 leading-tight">
               Unforgettable Experiences
             </h1>
-            <p className="text-primary-foreground/80 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+            <p className="text-white/80 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
               From adrenaline-fueled adventures to tranquil retreats, discover experiences tailored to your passions by our AI travel companion.
             </p>
           </div>
@@ -201,16 +204,16 @@ const Experiences = () => {
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-6">
                     <div className="flex items-center gap-2 mb-2">
-                      <exp.icon className="h-4 w-4 text-primary-foreground/80" />
-                      <span className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wider">{exp.title}</span>
+                      <exp.icon className="h-4 w-4 text-white/80" />
+                      <span className="text-xs font-medium text-white/70 uppercase tracking-wider">{exp.title}</span>
                     </div>
-                    <p className="text-primary-foreground/80 text-sm leading-relaxed mb-3">{exp.desc}</p>
+                    <p className="text-white/80 text-sm leading-relaxed mb-3">{exp.desc}</p>
                     <div className="flex flex-wrap gap-2">
                       {exp.tags.map((tag) => (
-                        <span key={tag} className="text-xs px-2.5 py-1 rounded-full bg-primary-foreground/15 backdrop-blur-sm text-primary-foreground/90 border border-primary-foreground/10">
+                        <span key={tag} className="text-xs px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm text-white/90 border border-white/10">
                           {tag}
                         </span>
                       ))}
@@ -286,12 +289,12 @@ const Experiences = () => {
         {/* CTA */}
         <section className="py-20 relative overflow-hidden">
           <img src={experiencesHero} alt="" className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-foreground/65" />
+          <div className="absolute inset-0 bg-black/65" />
           <div className="relative z-10 container mx-auto px-4 text-center">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
               Your Next Adventure Awaits
             </h2>
-            <p className="text-primary-foreground/80 max-w-xl mx-auto mb-8 text-lg">
+            <p className="text-white/80 max-w-xl mx-auto mb-8 text-lg">
               Enter your destination and let our AI curate the perfect experiences for you.
             </p>
             <Link to="/">

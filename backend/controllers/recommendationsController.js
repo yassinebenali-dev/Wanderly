@@ -6,6 +6,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const { normalizeDestination, correctDestinationName } = require('../utils/destinationUtils');
 
 const SERPAPI_BASE_URL = 'https://serpapi.com/search.json';
+const { checkLimit, incrementUsage } = require('./subscriptionController');
 
 const JSON_RULES = `
 CRITICAL FORMATTING RULES - YOU MUST FOLLOW THESE EXACTLY:
@@ -156,7 +157,7 @@ function transformPlace(place, type, index, destination) {
   };
 }
 
-async function fetchAccommodationsAI(destination, budget) {
+async function fetchAccommodationsAI(destination, budget, personalizationContext = '') {
   let budgetContext = '';
   if (budget) {
     const perNight = Math.round((budget * 0.4) / 5);
@@ -166,6 +167,7 @@ async function fetchAccommodationsAI(destination, budget) {
   const prompt = `${JSON_RULES}
 
 You are a travel accommodation expert. ${budgetContext}
+${personalizationContext}
 Provide exactly 6 accommodation recommendations for ${destination}.
 
 Return this exact JSON structure:
@@ -212,10 +214,11 @@ Return this exact JSON structure:
   }));
 }
 
-async function fetchHistoryAI(destination, interests) {
+async function fetchHistoryAI(destination, interests, personalizationContext = '') {
   const prompt = `${JSON_RULES}
 
 You are a travel historian. Provide historical and cultural information about ${destination}.
+${personalizationContext}
 
 Return this exact JSON structure:
 {
@@ -241,10 +244,11 @@ Include exactly 3 traditions. The content must mention how the city relates to: 
   return safeParseJson(content);
 }
 
-async function fetchAllAI(destination, budget, interests) {
+async function fetchAllAI(destination, budget, interests, personalizationContext = '') {
   const prompt = `${JSON_RULES}
 
 You are a travel data API. Generate realistic travel recommendations for ${destination}.
+${personalizationContext}
 ${budget ? `User budget: $${budget} USD.` : ''}
 ${interests?.length ? `User interests: ${interests.join(', ')}.` : ''}
 
@@ -291,8 +295,30 @@ exports.getRecommendations = async (req, res) => {
   if (!destination) {
     return res.status(400).json({ error: 'Destination is required' });
   }
+  // Check search limit for authenticated users
+if (req.user?.id) {
+  const limitCheck = await checkLimit(req.user.id, 'searches');
+  if (!limitCheck.allowed) {
+    return res.status(429).json({ 
+      error: limitCheck.message,
+      limitReached: true,
+      field: 'searches'
+    });
+  }
+  await incrementUsage(req.user.id, 'searches');
+}
 
   const normalizedDestination = await correctDestinationName(destination);
+  // Get user profile for personalization
+const userProfile = await getUserProfile(req.user?.id);
+let personalizationContext = '';
+if (userProfile && userProfile.topInterests.length > 0) {
+  personalizationContext = `
+PERSONALIZATION CONTEXT (based on user travel history):
+- User frequently searches for: ${userProfile.topInterests.join(', ')}
+- Past destinations explored: ${userProfile.pastDestinations.join(', ')}
+- Subtly prioritize ${userProfile.topInterests[0]} experiences in recommendations even if not explicitly requested by the user.`;
+}
   // Update search stats
   await updateDestinationStats(normalizedDestination);
   await saveSearchHistory(req.user?.id, normalizedDestination, budget, interests);
@@ -303,11 +329,11 @@ exports.getRecommendations = async (req, res) => {
       : `things to do in ${normalizedDestination}`;
 
     const [accommodations, restaurantsRaw, activitiesRaw, landmarksRaw, history] = await Promise.all([
-      fetchAccommodationsAI(normalizedDestination, budget),
+      fetchAccommodationsAI(normalizedDestination, budget, personalizationContext),
       fetchFromSerpApi(`restaurants in ${normalizedDestination}`),
       fetchFromSerpApi(activityQuery),
       fetchFromSerpApi(`landmarks in ${normalizedDestination}`),
-      fetchHistoryAI(normalizedDestination, interests),
+      fetchHistoryAI(normalizedDestination, interests, personalizationContext),
     ]);
 
     const restaurants = restaurantsRaw.slice(0, 6).map((p, i) => transformPlace(p, 'restaurant', i, normalizedDestination));
@@ -327,11 +353,52 @@ exports.getRecommendations = async (req, res) => {
     console.error('SerpAPI failed, falling back to AI:', err.message);
 
     try {
-      const data = await fetchAllAI(normalizedDestination, budget, interests);
+      const data = await fetchAllAI(normalizedDestination, budget, interests, personalizationContext);
       return res.json({ ...data, dataSource: 'ai' });
     } catch (aiErr) {
       console.error('AI fallback failed:', aiErr);
       return res.status(500).json({ error: 'Failed to fetch recommendations' });
     }
   }
+  async function getUserProfile(userId) {
+  if (!userId) return null;
+
+  try {
+    const [history] = await pool.query(
+      `SELECT interests, destination 
+       FROM search_history 
+       WHERE user_id = ? 
+       ORDER BY searched_at DESC 
+       LIMIT 10`,
+      [userId]
+    );
+
+    if (history.length === 0) return null;
+
+    // Count most frequent interests
+    const interestCount = {};
+    history.forEach(row => {
+      const interests = typeof row.interests === 'string'
+        ? JSON.parse(row.interests)
+        : row.interests || [];
+      interests.forEach(interest => {
+        interestCount[interest] = (interestCount[interest] || 0) + 1;
+      });
+    });
+
+    // Top 3 interests
+    const topInterests = Object.entries(interestCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([interest]) => interest);
+
+    // Past destinations
+    const pastDestinations = [...new Set(history.map(r => r.destination))].slice(0, 5);
+
+    return { topInterests, pastDestinations, totalSearches: history.length };
+  } catch (err) {
+    console.error('Get user profile error:', err);
+    return null;
+  }
+}
 };

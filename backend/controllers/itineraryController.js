@@ -3,6 +3,7 @@ const Groq = require('groq-sdk');
 require('dotenv').config();
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const { checkLimit, incrementUsage } = require('./subscriptionController');
 
 const JSON_RULES = `
 CRITICAL FORMATTING RULES:
@@ -97,7 +98,15 @@ exports.generateItinerary = async (req, res) => {
   if (!destination || !nb_days) {
     return res.status(400).json({ error: 'Destination and number of days are required' });
   }
-
+  const limitCheck = await checkLimit(req.user.id, 'itineraries');
+if (!limitCheck.allowed) {
+  return res.status(429).json({
+    error: limitCheck.message,
+    limitReached: true,
+    field: 'itineraries'
+  });
+}
+await incrementUsage(req.user.id, 'itineraries');
   try {
     const itinerary = await generateItineraryAI(destination, nb_days, budget, interests);
     res.json(itinerary);

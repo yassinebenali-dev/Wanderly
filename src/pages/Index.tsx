@@ -5,12 +5,14 @@ import { ChatInterface } from '@/components/ChatInterface';
 import { TravelDashboard } from '@/components/TravelDashboard';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, X, Plane, Compass, Clock, ArrowRight, Sparkles, Shield, Zap, LogOut, Bookmark, BookmarkCheck, User, ChevronDown, Loader2, LayoutDashboard } from 'lucide-react';
+import { MessageCircle, X, Crown, Compass, Clock, ArrowRight, Sparkles, Shield, Zap, LogOut, Bookmark, BookmarkCheck, User, ChevronDown, Loader2, LayoutDashboard } from 'lucide-react';
 import ctaBackground from '@/assets/cta-background.jpg';
 import { useRecommendations } from '@/hooks/useRecommendations';
+import { useTheme } from '@/hooks/useTheme';
 import { UserPreferences, INTEREST_OPTIONS } from '@/types/travel';
 import { useAuth } from '@/hooks/useAuth';
 import { useSaved } from '@/hooks/useSaved';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Itinerary } from '@/hooks/useItinerary';
 import { Checklist } from '@/hooks/useChecklist';
 import { Budget } from '@/hooks/useBudget';
@@ -22,6 +24,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+
 
 const Index = () => {
   const [showDashboard, setShowDashboard] = useState(false);
@@ -55,22 +59,16 @@ const Index = () => {
       setShowDashboard(true);
 
       apiRequest(`/itinerary/${saved.id}`)
-        .then((data) => {
-          if (data?.itinerary) setCurrentItinerary(data.itinerary);
-        })
+        .then((data) => { if (data?.itinerary) setCurrentItinerary(data.itinerary); })
         .catch(() => {});
 
       apiRequest(`/checklist/${saved.id}`)
-        .then((data) => {
-          if (data?.items) setCurrentChecklist(data.items);
-        })
+        .then((data) => { if (data?.items) setCurrentChecklist(data.items); })
         .catch(() => {});
 
       apiRequest(`/budget/${saved.id}`)
         .then((data) => {
-          if (data?.total_budget) {
-            setCurrentBudget({ total_budget: data.total_budget, categories: data.categories });
-          }
+          if (data?.total_budget) setCurrentBudget({ total_budget: data.total_budget, categories: data.categories });
         })
         .catch(() => {});
 
@@ -81,9 +79,7 @@ const Index = () => {
   }, [location.state]);
 
   useEffect(() => {
-    if (destination && user) {
-      checkIfSaved(destination);
-    }
+    if (destination && user) checkIfSaved(destination);
   }, [destination, user]);
 
   useEffect(() => {
@@ -144,23 +140,16 @@ const Index = () => {
               nb_days: currentItinerary.nb_days,
             }),
           });
-        } catch (err) {
-          console.error('Failed to auto-save itinerary:', err);
-        }
+        } catch (err) { console.error('Failed to auto-save itinerary:', err); }
       }
 
       if (currentChecklist && result?.id) {
         try {
           await apiRequest('/checklist/save', {
             method: 'POST',
-            body: JSON.stringify({
-              saved_destination_id: result.id,
-              items: currentChecklist,
-            }),
+            body: JSON.stringify({ saved_destination_id: result.id, items: currentChecklist }),
           });
-        } catch (err) {
-          console.error('Failed to auto-save checklist:', err);
-        }
+        } catch (err) { console.error('Failed to auto-save checklist:', err); }
       }
 
       if (currentBudget && result?.id) {
@@ -173,9 +162,7 @@ const Index = () => {
               categories: currentBudget.categories,
             }),
           });
-        } catch (err) {
-          console.error('Failed to auto-save budget:', err);
-        }
+        } catch (err) { console.error('Failed to auto-save budget:', err); }
       }
     }
   };
@@ -209,6 +196,10 @@ const Index = () => {
           <Clock className="h-4 w-4 mr-2" />
           Search History
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/subscription')}>
+          <Crown className="h-4 w-4 mr-2" />
+          My Subscription
+        </DropdownMenuItem>
         {user?.role === 'admin' && (
           <DropdownMenuItem onClick={() => navigate('/admin')}>
             <LayoutDashboard className="h-4 w-4 mr-2" />
@@ -233,6 +224,7 @@ const Index = () => {
             : 'bg-transparent backdrop-blur-sm'
         }`}>
           <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+            {/* Logo */}
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg hero-gradient flex items-center justify-center">
                 <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
@@ -241,6 +233,8 @@ const Index = () => {
                 scrolled ? 'text-foreground' : 'text-primary-foreground'
               }`}>Wanderly</span>
             </div>
+
+            {/* Nav */}
             <nav className="hidden md:flex items-center gap-8">
               {[
                 { label: 'Destinations', href: '#' },
@@ -254,20 +248,25 @@ const Index = () => {
                 }`}>{item.label}</a>
               ))}
             </nav>
-            {user ? (
-              <UserDropdown scrolled={scrolled} />
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className={`rounded-full text-xs transition-all duration-500 ${
-                  !scrolled && 'border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10'
-                }`}
-                onClick={() => navigate('/auth')}
-              >
-                Sign In
-              </Button>
-            )}
+
+            {/* Right side: toggle + user */}
+            <div className="flex items-center gap-3">
+              <ThemeToggle scrolled={scrolled} />
+              {user ? (
+                <UserDropdown scrolled={scrolled} />
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`rounded-full text-xs transition-all duration-500 ${
+                    !scrolled && 'border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10'
+                  }`}
+                  onClick={() => navigate('/auth')}
+                >
+                  Sign In
+                </Button>
+              )}
+            </div>
           </div>
         </header>
 
@@ -313,7 +312,7 @@ const Index = () => {
             <div className="container mx-auto px-4">
               <div className="relative overflow-hidden rounded-3xl p-12 md:p-20 min-h-[400px] flex items-center">
                 <img src={ctaBackground} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-foreground/60" />
+                <div className="absolute inset-0 bg-black/60" />
                 <div className="relative z-10 max-w-2xl">
                   <h2 className="font-display text-3xl md:text-5xl font-bold leading-[1.1] mb-5 text-white">
                     Ready for your next chapter?
@@ -384,7 +383,10 @@ const Index = () => {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Right side: toggle + actions */}
+          <div className="flex items-center gap-3">
+            <ThemeToggle scrolled={true} />
             {recommendations && (
               <Button
                 variant="outline"

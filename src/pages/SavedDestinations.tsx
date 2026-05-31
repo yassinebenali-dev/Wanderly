@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSaved } from '@/hooks/useSaved';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plane, Trash2, MapPin, Calendar, ArrowLeft, Bookmark, Loader2 } from 'lucide-react';
 import { Footer } from '@/components/Footer';
@@ -43,10 +44,13 @@ const SavedDestinations = () => {
             <div className="hidden md:block h-6 w-px bg-border" />
             <span className="hidden md:block text-muted-foreground font-medium">Saved Destinations</span>
           </div>
-          <Button variant="outline" size="sm" className="rounded-full" onClick={() => navigate('/')}>
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Search
-          </Button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle scrolled={true} />
+            <Button variant="outline" size="sm" className="rounded-full" onClick={() => navigate('/')}>
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Search
+            </Button>
+          </div>
         </div>
       </header>
 
