@@ -51,22 +51,27 @@ exports.getSubscriptionStats = async (req, res) => {
     // Total paying subscribers (Gold + Diamond)
     const [[{ totalPaying }]] = await pool.query(
       `SELECT COUNT(us.id) as totalPaying
-       FROM user_subscriptions us
-       JOIN subscription_plans sp ON sp.id = us.plan_id
-       WHERE sp.name != 'Free' AND (us.expires_at IS NULL OR us.expires_at > NOW())`
+      FROM user_subscriptions us
+      JOIN subscription_plans sp ON sp.id = us.plan_id
+      WHERE sp.name != 'Free' AND (us.expires_at IS NULL OR us.expires_at > NOW())`
+    );
+    const [[{ totalUsers }]] = await pool.query(
+      `SELECT COUNT(*) as totalUsers FROM users`
     );
 
     // Revenue calculations
-    const [activeSubscriptions] = await pool.query(
+    const [monthlySubscriptions] = await pool.query(
       `SELECT sp.name as plan_name, COUNT(us.id) as count
-       FROM user_subscriptions us
-       JOIN subscription_plans sp ON sp.id = us.plan_id
-       WHERE sp.name != 'Free' AND (us.expires_at IS NULL OR us.expires_at > NOW())
-       GROUP BY sp.id, sp.name`
+      FROM user_subscriptions us
+      JOIN subscription_plans sp ON sp.id = us.plan_id
+      WHERE sp.name != 'Free'
+      AND YEAR(us.started_at) = YEAR(NOW())
+      AND MONTH(us.started_at) = MONTH(NOW())
+      GROUP BY sp.id, sp.name`
     );
 
     let monthlyRevenue = 0;
-    activeSubscriptions.forEach(sub => {
+    monthlySubscriptions.forEach(sub => {
       const price = PLAN_PRICES[sub.plan_name] || 0;
       monthlyRevenue += price * sub.count;
     });
@@ -133,6 +138,7 @@ exports.getSubscriptionStats = async (req, res) => {
     res.json({
       planDistribution,
       totalPaying,
+      totalUsers,
       monthlyRevenue: parseFloat(monthlyRevenue.toFixed(2)),
       yearlyRevenue: parseFloat(yearlyRevenue.toFixed(2)),
       allTimeRevenue: parseFloat(allTimeRevenue.toFixed(2)),
