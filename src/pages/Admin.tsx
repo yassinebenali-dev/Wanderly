@@ -23,6 +23,7 @@ interface Stats {
 interface SubscriptionStats {
   planDistribution: { plan_name: string; count: number }[];
   totalPaying: number;
+  totalUsers: number;
   monthlyRevenue: number;
   yearlyRevenue: number;
   allTimeRevenue: number;
@@ -437,7 +438,7 @@ const Admin = () => {
                         <h3 className="font-semibold text-foreground">Conversion Rate</h3>
                       </div>
                       {(() => {
-                        const total = subscriptionStats.planDistribution.reduce((s, p) => s + p.count, 0);
+                        const total = subscriptionStats.totalUsers;
                         const rate = total > 0 ? Math.round((subscriptionStats.totalPaying / total) * 100) : 0;
                         return (
                           <>

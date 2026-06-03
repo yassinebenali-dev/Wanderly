@@ -381,7 +381,7 @@ export default function Subscription() {
                 <label className="block text-sm font-semibold text-foreground mb-2">Cardholder Name</label>
                 <input
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="eg: Yassine Benali "
                   value={paymentForm.cardName}
                   onChange={(e) => setPaymentForm({ ...paymentForm, cardName: e.target.value })}
                   className="w-full px-4 py-3.5 bg-muted/40 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"

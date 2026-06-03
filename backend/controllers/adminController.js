@@ -39,93 +39,78 @@ exports.getStats = async (req, res) => {
 // Get subscription stats
 exports.getSubscriptionStats = async (req, res) => {
   try {
-    // Plan distribution
+    // Plan distribution — ALL users with their current plan (default Free)
     const [planDistribution] = await pool.query(
-      `SELECT sp.name as plan_name, COUNT(us.id) as count
-       FROM subscription_plans sp
-       LEFT JOIN user_subscriptions us ON us.plan_id = sp.id
-       GROUP BY sp.id, sp.name
-       ORDER BY sp.id`
+      `SELECT plan_name, count FROM (
+        SELECT 
+          COALESCE(sp.name, 'Free') as plan_name,
+          COUNT(u.id) as count
+        FROM users u
+        LEFT JOIN user_subscriptions us ON us.user_id = u.id
+        LEFT JOIN subscription_plans sp ON sp.id = us.plan_id
+        GROUP BY plan_name
+      ) AS sub
+      ORDER BY CASE plan_name
+        WHEN 'Free' THEN 1
+        WHEN 'Gold' THEN 2
+        WHEN 'Diamond' THEN 3
+        ELSE 1
+      END`
     );
 
-    // Total paying subscribers (Gold + Diamond)
+    // Total paying subscribers (Gold + Diamond) — active only
     const [[{ totalPaying }]] = await pool.query(
       `SELECT COUNT(us.id) as totalPaying
-      FROM user_subscriptions us
-      JOIN subscription_plans sp ON sp.id = us.plan_id
-      WHERE sp.name != 'Free' AND (us.expires_at IS NULL OR us.expires_at > NOW())`
+       FROM user_subscriptions us
+       JOIN subscription_plans sp ON sp.id = us.plan_id
+       WHERE sp.name != 'Free' AND (us.expires_at IS NULL OR us.expires_at > NOW())`
     );
+
+    // Total users for conversion rate
     const [[{ totalUsers }]] = await pool.query(
-      `SELECT COUNT(*) as totalUsers FROM users`
+      'SELECT COUNT(*) as totalUsers FROM users'
     );
 
-    // Revenue calculations
-    const [monthlySubscriptions] = await pool.query(
-      `SELECT sp.name as plan_name, COUNT(us.id) as count
-      FROM user_subscriptions us
-      JOIN subscription_plans sp ON sp.id = us.plan_id
-      WHERE sp.name != 'Free'
-      AND YEAR(us.started_at) = YEAR(NOW())
-      AND MONTH(us.started_at) = MONTH(NOW())
-      GROUP BY sp.id, sp.name`
+    // Monthly revenue — from transactions this month
+    const [[{ monthlyRevenue }]] = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) as monthlyRevenue
+       FROM subscription_transactions
+       WHERE YEAR(created_at) = YEAR(NOW())
+       AND MONTH(created_at) = MONTH(NOW())`
     );
 
-    let monthlyRevenue = 0;
-    monthlySubscriptions.forEach(sub => {
-      const price = PLAN_PRICES[sub.plan_name] || 0;
-      monthlyRevenue += price * sub.count;
-    });
-    // Real yearly revenue (subscriptions started this year)
-    const [yearlySubscriptions] = await pool.query(
-      `SELECT sp.name as plan_name, COUNT(us.id) as count
-      FROM user_subscriptions us
-      JOIN subscription_plans sp ON sp.id = us.plan_id
-      WHERE sp.name != 'Free'
-      AND YEAR(us.started_at) = YEAR(NOW())
-      GROUP BY sp.id, sp.name`
+    // Yearly revenue — from transactions this year
+    const [[{ yearlyRevenue }]] = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) as yearlyRevenue
+       FROM subscription_transactions
+       WHERE YEAR(created_at) = YEAR(NOW())`
     );
 
-    let yearlyRevenue = 0;
-    yearlySubscriptions.forEach(sub => {
-      const price = PLAN_PRICES[sub.plan_name] || 0;
-      yearlyRevenue += price * sub.count;
-    });
-
-    // All-time revenue (count all paid subscriptions ever)
-    const [allTimeSubs] = await pool.query(
-      `SELECT sp.name as plan_name, COUNT(us.id) as count
-       FROM user_subscriptions us
-       JOIN subscription_plans sp ON sp.id = us.plan_id
-       WHERE sp.name != 'Free'
-       GROUP BY sp.id, sp.name`
+    // All-time revenue — from all transactions ever
+    const [[{ allTimeRevenue }]] = await pool.query(
+      `SELECT COALESCE(SUM(amount), 0) as allTimeRevenue
+       FROM subscription_transactions`
     );
 
-    let allTimeRevenue = 0;
-    allTimeSubs.forEach(sub => {
-      const price = PLAN_PRICES[sub.plan_name] || 0;
-      allTimeRevenue += price * sub.count;
-    });
-
-    // Recent upgrades
+    // Recent upgrades — from transactions
     const [recentUpgrades] = await pool.query(
-      `SELECT u.email, u.display_name, sp.name as plan_name, us.started_at, us.expires_at
-       FROM user_subscriptions us
-       JOIN users u ON u.id = us.user_id
-       JOIN subscription_plans sp ON sp.id = us.plan_id
-       WHERE sp.name != 'Free'
-       ORDER BY us.started_at DESC
+      `SELECT u.email, u.display_name, st.plan_name, st.created_at as started_at,
+              us.expires_at
+       FROM subscription_transactions st
+       JOIN users u ON u.id = st.user_id
+       LEFT JOIN user_subscriptions us ON us.user_id = st.user_id
+       ORDER BY st.created_at DESC
        LIMIT 10`
     );
 
-    // Upgrades per month (last 6 months)
+    // Revenue per month (last 6 months) — from transactions
     const [monthlyUpgrades] = await pool.query(
-      `SELECT DATE_FORMAT(us.started_at, '%Y-%m') as month,
-              COUNT(us.id) as upgrades,
-              SUM(CASE WHEN sp.name = 'Gold' THEN 9.99 WHEN sp.name = 'Diamond' THEN 24.99 ELSE 0 END) as revenue
-       FROM user_subscriptions us
-       JOIN subscription_plans sp ON sp.id = us.plan_id
-       WHERE sp.name != 'Free' AND us.started_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
-       GROUP BY DATE_FORMAT(us.started_at, '%Y-%m')
+      `SELECT DATE_FORMAT(created_at, '%Y-%m') as month,
+              COUNT(*) as upgrades,
+              SUM(amount) as revenue
+       FROM subscription_transactions
+       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+       GROUP BY DATE_FORMAT(created_at, '%Y-%m')
        ORDER BY month ASC`
     );
 
@@ -139,9 +124,9 @@ exports.getSubscriptionStats = async (req, res) => {
       planDistribution,
       totalPaying,
       totalUsers,
-      monthlyRevenue: parseFloat(monthlyRevenue.toFixed(2)),
-      yearlyRevenue: parseFloat(yearlyRevenue.toFixed(2)),
-      allTimeRevenue: parseFloat(allTimeRevenue.toFixed(2)),
+      monthlyRevenue: parseFloat(parseFloat(monthlyRevenue).toFixed(2)),
+      yearlyRevenue: parseFloat(parseFloat(yearlyRevenue).toFixed(2)),
+      allTimeRevenue: parseFloat(parseFloat(allTimeRevenue).toFixed(2)),
       recentUpgrades,
       monthlyUpgrades,
       expiringSoon,

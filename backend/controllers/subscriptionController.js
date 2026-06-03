@@ -264,18 +264,27 @@ exports.changePlan = async (req, res) => {
     );
 
     if (existing.length > 0) {
-      await pool.query(
-        `UPDATE user_subscriptions 
-         SET plan_id = ?, started_at = NOW(), expires_at = ? 
-         WHERE user_id = ?`,
-        [plan.id, expiresAt, req.user.id]
-      );
-    } else {
-      await pool.query(
-        'INSERT INTO user_subscriptions (user_id, plan_id, started_at, expires_at) VALUES (?, ?, NOW(), ?)',
-        [req.user.id, plan.id, expiresAt]
-      );
-    }
+  await pool.query(
+    `UPDATE user_subscriptions 
+     SET plan_id = ?, started_at = NOW(), expires_at = ? 
+     WHERE user_id = ?`,
+    [plan.id, expiresAt, req.user.id]
+  );
+} else {
+  await pool.query(
+    'INSERT INTO user_subscriptions (user_id, plan_id, started_at, expires_at) VALUES (?, ?, NOW(), ?)',
+    [req.user.id, plan.id, expiresAt]
+  );
+}
+
+// Record transaction only for paid plans
+if (plan_name !== 'Free') {
+  const amount = plan_name === 'Gold' ? 9.99 : plan_name === 'Diamond' ? 24.99 : 0;
+  await pool.query(
+    'INSERT INTO subscription_transactions (user_id, plan_name, amount) VALUES (?, ?, ?)',
+    [req.user.id, plan_name, amount]
+  );
+}
 
     res.json({
       message: `Plan changed to ${plan_name} successfully`,
