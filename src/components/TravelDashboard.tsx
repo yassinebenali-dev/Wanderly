@@ -100,15 +100,27 @@ export function TravelDashboard({
   };
 
   const handleGenerateItinerary = async (nbDays?: number) => {
-    if (!destination) return;
-    const days = nbDays || calculateDays();
-    const result = await generateItinerary(destination, days, preferences?.budget, preferences?.interests);
-    if (result) {
-      onItineraryChange?.(result);
+  if (!destination) return;
+  const days = nbDays || calculateDays();
+  const result = await generateItinerary(destination, days, preferences?.budget, preferences?.interests);
+  if (result) {
+    onItineraryChange?.(result);
+    // Auto-save if destination is already saved
+    if (savedDestinationId) {
+      const success = await saveItinerary(savedDestinationId, result, days);
+      if (success) {
+        setItineraryChanged(false);
+        setItinerarySaved(true);
+      } else {
+        setItineraryChanged(true);
+        setItinerarySaved(false);
+      }
+    } else {
       setItineraryChanged(true);
       setItinerarySaved(false);
     }
-  };
+  }
+};
 
   const handleSaveItinerary = async () => {
     if (!savedDestinationId || !itinerary) return;
@@ -123,14 +135,26 @@ export function TravelDashboard({
   };
 
   const handleGenerateChecklist = async () => {
-    if (!destination) return;
-    const result = await generateChecklist(destination, preferences?.interests, preferences?.budget);
-    if (result) {
-      onChecklistChange?.(result);
+  if (!destination) return;
+  const result = await generateChecklist(destination, preferences?.interests, preferences?.budget);
+  if (result) {
+    onChecklistChange?.(result);
+    // Auto-save if destination is already saved
+    if (savedDestinationId) {
+      const success = await saveChecklist(savedDestinationId, result);
+      if (success) {
+        setChecklistChanged(false);
+        setChecklistSaved(true);
+      } else {
+        setChecklistChanged(false);
+        setChecklistSaved(false);
+      }
+    } else {
       setChecklistChanged(false);
       setChecklistSaved(false);
     }
-  };
+  }
+};
 
   const handleSaveChecklist = async () => {
     if (!savedDestinationId || !checklist) return;
