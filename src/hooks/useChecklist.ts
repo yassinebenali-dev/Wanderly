@@ -27,6 +27,7 @@ export const useChecklist = () => {
     destination: string,
     interests?: string[],
     budget?: number
+    
   ) => {
     setLoading(true);
     setError(null);

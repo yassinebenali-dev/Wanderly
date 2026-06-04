@@ -6,9 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Place, CityHistory, UserPreferences } from '@/types/travel';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ItineraryView } from '@/components/ItineraryView';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import { ChecklistView } from '@/components/ChecklistView';
 import { BudgetView } from '@/components/BudgetView';
 import { RatingView } from '@/components/RatingView';
+import { useAuth } from '@/hooks/useAuth';
 import { useItinerary, Itinerary } from '@/hooks/useItinerary';
 import { useChecklist, Checklist } from '@/hooks/useChecklist';
 import { useBudget, Budget } from '@/hooks/useBudget';
@@ -49,6 +52,9 @@ export function TravelDashboard({
   onBudgetChange,
 }: TravelDashboardProps) {
   const [activeTab, setActiveTab] = useState('stay');
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
+  const navigate = useNavigate();
 
   const [itinerarySaving, setItinerarySaving] = useState(false);
   const [itinerarySaved, setItinerarySaved] = useState(false);
@@ -227,6 +233,23 @@ export function TravelDashboard({
       </p>
     </div>
   );
+  const renderAuthMessage = () => (
+  <div className="flex flex-col items-center justify-center py-16 text-center">
+    <h3 className="text-xl font-semibold mb-2">
+      Sign in to unlock this feature
+    </h3>
+
+    <p className="text-muted-foreground max-w-md">
+      Create an account or sign in to generate personalized itineraries,
+      travel checklists, and budget plans tailored to your trip.
+    </p>
+
+    
+    <Button onClick={() => navigate('/auth')}>
+      Sign In
+    </Button>
+  </div>
+);
 
   return (
     <div className="h-full flex flex-col">
@@ -345,23 +368,25 @@ export function TravelDashboard({
                 {destination ? `Personalized day-by-day plan for ${destination}` : 'Generate a personalized travel plan'}
               </p>
             </div>
-            {destination && (
-              <ItineraryView
-                destination={destination}
-                budget={preferences?.budget}
-                interests={preferences?.interests}
-                arrivalDate={preferences?.arrivalDate}
-                departureDate={preferences?.departureDate}
-                savedDestinationId={savedDestinationId}
-                itinerary={itinerary}
-                loading={itineraryLoading}
-                onGenerate={handleGenerateItinerary}
-                onSave={handleSaveItinerary}
-                saving={itinerarySaving}
-                saved={itinerarySaved}
-                showSaveButton={itineraryChanged && !itinerarySaved}
-              />
-            )}
+            {!isAuthenticated
+              ? renderAuthMessage()
+              : destination && (
+                  <ItineraryView
+                    destination={destination}
+                    budget={preferences?.budget}
+                    interests={preferences?.interests}
+                    arrivalDate={preferences?.arrivalDate}
+                    departureDate={preferences?.departureDate}
+                    savedDestinationId={savedDestinationId}
+                    itinerary={itinerary}
+                    loading={itineraryLoading}
+                    onGenerate={handleGenerateItinerary}
+                    onSave={handleSaveItinerary}
+                    saving={itinerarySaving}
+                    saved={itinerarySaved}
+                    showSaveButton={itineraryChanged && !itinerarySaved}
+                  />
+                )}
           </TabsContent>
 
           <TabsContent value="checklist" className="mt-0 animate-fade-in">
@@ -371,7 +396,9 @@ export function TravelDashboard({
                 {destination ? `Everything you need for your trip to ${destination}` : 'Generate a preparation checklist'}
               </p>
             </div>
-            {destination && (
+            {!isAuthenticated
+              ? renderAuthMessage()
+              : destination && (
               <ChecklistView
                 destination={destination}
                 interests={preferences?.interests}
@@ -396,7 +423,9 @@ export function TravelDashboard({
                 {destination ? `Plan your spending for ${destination}` : 'Allocate your budget across categories'}
               </p>
             </div>
-            {destination && (
+            {!isAuthenticated
+              ? renderAuthMessage()
+              : destination && (
               <BudgetView
                 destination={destination}
                 totalBudget={preferences?.budget}
