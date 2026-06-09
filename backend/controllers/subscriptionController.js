@@ -168,16 +168,11 @@ exports.checkLimit = async (userId, field) => {
   try {
     const plan = await exports.getUserSubscription(userId);
     const usage = await exports.getUsage(userId);
-
     if (!plan || !usage) return { allowed: true };
-
     const limit = plan[`max_${field}`];
 
-    // -1 means unlimited
     if (limit === -1) return { allowed: true };
-
     const current = usage[field] || 0;
-
     if (current >= limit) {
       return {
         allowed: false,
@@ -187,7 +182,6 @@ exports.checkLimit = async (userId, field) => {
         message: `You have reached your ${field.replace('_', ' ')} limit (${current}/${limit}) for this period on the ${plan.name || plan.plan_name} plan. Please upgrade to continue.`
       };
     }
-
     return { allowed: true, current, limit, remaining: limit - current };
   } catch (err) {
     console.error('Check limit error:', err);

@@ -18,13 +18,26 @@ CRITICAL FORMATTING RULES:
 9. Use only simple ASCII characters in all string values
 `;
 
-async function generateChecklistAI(destination, interests, budget) {
+async function generateChecklistAI(destination, interests, budget, arrivalDate, departureDate) {
+  let seasonContext = '';
+  let season = '';
+  if (arrivalDate) {
+    const month = new Date(arrivalDate).getMonth() + 1;
+    season = month >= 3 && month <= 5 ? 'Spring' :
+            month >= 6 && month <= 8 ? 'Summer' :
+            month >= 9 && month <= 11 ? 'Autumn' : 'Winter';
+    const dateRange = departureDate
+      ? `from ${arrivalDate} to ${departureDate}`
+      : `around ${arrivalDate}`;
+    seasonContext = `Travel period: ${dateRange} (${season} season). Tailor clothing and equipment items for ${season} conditions at ${destination}.`;
+  }
   const prompt = `${JSON_RULES}
 
 You are a travel preparation expert. Generate a comprehensive packing and preparation checklist for a trip to ${destination}.
 ${interests?.length ? `User interests: ${interests.join(', ')}.` : ''}
 ${budget ? `Budget: $${budget} USD.` : ''}
-
+${seasonContext}
+${seasonContext ? `Tailor clothing and equipment items specifically for ${season} weather conditions at ${destination}. For example, include warm clothing for Winter, light clothing for Summer.` : ''}
 Return this exact JSON structure:
 {
   "categories": [
@@ -96,7 +109,7 @@ Generate 4 to 6 items per category. Tailor items specifically for ${destination}
 
 // Generate checklist without saving
 exports.generateChecklist = async (req, res) => {
-  const { destination, interests, budget } = req.body;
+  const { destination, interests, budget, arrival_date, departure_date } = req.body;
 
   if (!destination) {
     return res.status(400).json({ error: 'Destination is required' });
@@ -112,7 +125,7 @@ if (!limitCheck.allowed) {
 await incrementUsage(req.user.id, 'checklists');
 
   try {
-    const checklist = await generateChecklistAI(destination, interests, budget);
+    const checklist = await generateChecklistAI(destination, interests, budget, arrival_date, departure_date);
     res.json(checklist);
   } catch (err) {
     console.error('Generate checklist error:', err);

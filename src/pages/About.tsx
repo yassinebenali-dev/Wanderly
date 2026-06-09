@@ -280,9 +280,9 @@ const About = () => {
               </div>
               <div className="grid sm:grid-cols-3 gap-6">
                 {[
-                  { icon: Mail, title: 'Email Us', value: 'hello@wanderly.ai', subtitle: 'We reply within 24 hours' },
-                  { icon: Phone, title: 'Call Us', value: '+1 (555) 123-4567', subtitle: 'Mon–Fri, 9am–6pm PST' },
-                  { icon: MapPin, title: 'Visit Us', value: 'San Francisco, CA', subtitle: 'United States' },
+                  { icon: Mail, title: 'Email Us', value: 'contact@wanderly.tn', subtitle: 'We reply within 24 hours' },
+                  { icon: Phone, title: 'Call Us', value: '+216 51 338 982', subtitle: 'Mon–Fri, 9 AM – 6 PM' },
+                  { icon: MapPin, title: 'Visit Us', value: 'Mohamedia, Ben Arous', subtitle: 'Tunisia' },
                 ].map((contact) => (
                   <div key={contact.title} className="bg-card rounded-xl p-6 border border-border/50 shadow-soft text-center">
                     <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">

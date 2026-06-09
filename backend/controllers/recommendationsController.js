@@ -295,7 +295,8 @@ exports.getRecommendations = async (req, res) => {
   if (!destination) {
     return res.status(400).json({ error: 'Destination is required' });
   }
-  // Check search limit for authenticated users
+  
+// Check search limit for authenticated users
 if (req.user?.id) {
   const limitCheck = await checkLimit(req.user.id, 'searches');
   if (!limitCheck.allowed) {

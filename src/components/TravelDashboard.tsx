@@ -142,7 +142,7 @@ export function TravelDashboard({
 
   const handleGenerateChecklist = async () => {
   if (!destination) return;
-  const result = await generateChecklist(destination, preferences?.interests, preferences?.budget);
+  const result = await generateChecklist(destination, preferences?.interests, preferences?.budget, preferences?.arrivalDate, preferences?.departureDate);
   if (result) {
     onChecklistChange?.(result);
     // Auto-save if destination is already saved

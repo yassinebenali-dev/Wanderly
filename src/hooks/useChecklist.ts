@@ -26,15 +26,16 @@ export const useChecklist = () => {
   const generateChecklist = async (
     destination: string,
     interests?: string[],
-    budget?: number
-    
+    budget?: number,
+    arrivalDate?: string,
+    departureDate?: string
   ) => {
     setLoading(true);
     setError(null);
     try {
       const data = await apiRequest('/checklist/generate', {
         method: 'POST',
-        body: JSON.stringify({ destination, interests, budget }),
+        body: JSON.stringify({ destination, interests, budget, arrival_date: arrivalDate, departure_date: departureDate }),
       });
       setChecklist(data);
       return data;
