@@ -68,25 +68,21 @@ The platform combines modern web technologies with **Artificial Intelligence** t
 ## 📸 Screenshots
 
 <p align="center">
-<img src="Screenshots/screenshot1.png" alt="Wanderly Homepage" height="600" width="49%" />
-<img src="Screenshots/screenshot2.png" alt="Destination Exploration" height="600" width="49%" />
+<img src="Screenshots/chatbot_home.png" alt="Wanderly Homepage" height="600" width="49%" />
+<img src="Screenshots/recommendations.png" alt="Destination Exploration" height="600" width="49%" />
 </p>
 
 <p align="center">
-<img src="Screenshots/screenshot3.png" alt="AI Travel Planning" height="600" width="49%" />
-<img src="Screenshots/screenshot4.png" alt="Travel Itinerary" height="600" width="49%" />
+<img src="Screenshots/chatbot_recommendations.png" alt="AI Travel Planning" height="600" width="49%" />
+<img src="Screenshots/itineraryy.png" alt="Travel Itinerary" height="600" width="49%" />
 </p>
 
 <p align="center">
-<img src="Screenshots/screenshot5.png" alt="Trip Dashboard" height="600" width="49%" />
-<img src="Screenshots/screenshot6.png" alt="Budget Management" height="600" width="49%" />
+<img src="Screenshots/budgett.png" alt="Budget Management" height="600" width="49%" />
+<img src="Screenshots/flous.png" alt="Admin Dashboard" height="600" width="49%" />
 </p>
 
-<p align="center">
-<img src="Screenshots/screenshot7.png" alt="Admin Dashboard" height="600" width="49%" />
-<img src="Screenshots/screenshot8.png" alt="User Profile" height="600" width="49%" />
-</p>
-
+👉 More screenshots are available in the Screenshots folder.
 
 ## 📚 Learning Outcomes
 
