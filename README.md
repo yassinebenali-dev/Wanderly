@@ -4,8 +4,6 @@
 
 ## 📘 Overview
 
-**Wanderly** was developed as part of our **Projet de Fin d'Études (PFE)** at **DEFENDR**, during the final year of the **Licence en Informatique** program at **FST El Manar**.
-
 The platform combines modern web technologies with **Artificial Intelligence** to provide users with a personalized and interactive travel planning experience. Users can explore destinations, generate personalized itineraries, manage their travel budget, and organize their trips from a single platform.
 
 ## 🎯 Objectives
@@ -60,73 +58,12 @@ The platform combines modern web technologies with **Artificial Intelligence** t
 * 📊 Admin dashboard with platform statistics
 * 📱 Responsive and user-friendly interface
 
-## 📦 Installation & Usage
-
-> 🗂 The source code is available in this repository.
-
 ### Prerequisites
 
 * Node.js & npm
 * MySQL Server
 * Git
 
-### Step 1: Clone the Repository
-
-```bash
-git clone https://github.com/YOUR_USERNAME/Wanderly.git
-cd Wanderly
-```
-
-### Step 2: Backend Setup
-
-```bash
-cd backend
-npm install
-```
-
-Create a `.env` file in the `backend` directory with the required environment variables:
-
-```env
-PORT=5000
-
-DB_HOST=localhost
-DB_USER=your_mysql_user
-DB_PASSWORD=your_mysql_password
-DB_NAME=wanderly_db
-
-GROQ_API_KEY=your_groq_api_key
-SERPAPI_KEY=your_serpapi_key
-```
-
-Then start the backend server:
-
-```bash
-npm start
-```
-
-### Step 3: Frontend Setup
-
-Open a new terminal:
-
-```bash
-cd frontend
-npm install
-npm start
-```
-
-### Step 4: MySQL Database Setup
-
-* Create a new MySQL database named `wanderly_db`
-* Import the provided SQL schema/database file
-* Make sure the database credentials match your `.env` configuration
-
-### Step 5: Launch the Application
-
-Once both the frontend and backend are running, open the application in your browser:
-
-```text
-http://localhost:3000
-```
 
 ## 📸 Screenshots
 
@@ -150,7 +87,6 @@ http://localhost:3000
 <img src="Screenshots/screenshot8.png" alt="User Profile" height="600" width="49%" />
 </p>
 
-👉 More screenshots are available in the **`Screenshots`** folder.
 
 ## 📚 Learning Outcomes
 
@@ -182,4 +118,4 @@ Through this project, we developed strong skills in:
 
 This project was developed for academic purposes as part of a **Projet de Fin d'Études (PFE)**.
 
-All rights reserved © 2025.
+All rights reserved © 2026.
